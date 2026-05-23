@@ -260,12 +260,12 @@ digraph thread_states {
 
 == Blocking Methods React Automatically
 
-* `sleep()`, `wait()`, `join()` throw `InterruptedException` when interrupted
+* `Thread.sleep()`, `Object.wait()`, `Thread.join()` throw `InterruptedException` when interrupted
 * The interrupted flag is cleared before the exception is thrown
-* Catch it, handle it, or let it propagate
+* Do not swallow it silently — re-throw or restore the flag
 
 == Non-Blocking Code Must Check the Flag
 
-* `Thread.interrupted()` — checks and clears the flag (static)
+* `Thread.interrupted()` — static, checks and clears the *calling* thread's flag
 * `thread.isInterrupted()` — checks without clearing (instance)
 * Check in long-running loops to stay responsive
