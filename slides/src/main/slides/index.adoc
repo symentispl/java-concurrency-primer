@@ -206,11 +206,11 @@ t.start();
 * `thread.start()` — requests a new OS thread from the JVM
 * Returns immediately — does not block the caller
 * Never call `run()` directly — it runs in the current thread
-* `thread.stop()` — deprecated, scheduled for removal, never use
+* `thread.stop()` — deprecated, never use — safe shutdown covered later
 
 == Waiting for Completion
 
 * `thread.join()` — blocks until the thread terminates
 * `thread.join(millis)` — with a time limit
 * `thread.isAlive()` — non-blocking check
-* Throws `InterruptedException` — always handle it
+* Throws `InterruptedException` — a checked exception, must catch or declare
