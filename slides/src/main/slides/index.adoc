@@ -156,3 +156,9 @@ digraph mem {
 * Synchronize access to shared memory
 * Coordinate between threads
 * Inspect and monitor what is running
+
+== Today's Journey
+
+* *Act 1 — Foundation:* what threads are and how to use them
+* *Act 2 — Correctness:* what goes wrong and how to prevent it
+* *Act 3 — Production:* patterns, tools, and how to investigate
