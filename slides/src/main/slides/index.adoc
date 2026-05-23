@@ -14,3 +14,51 @@
 :customcss: css/custom.css
 :icons: font
 :title-slide-background-image: pexels-pixabay-327049.jpg
+
+== The Hardware Reality
+
+* Modern CPUs: 4, 8, 16+ cores
+* Each core executes instructions independently
+* Hyper-threading: 2 hardware threads per physical core
+* The hardware has been parallel for decades
+
+== Concurrency is Everywhere
+
+* Web servers handle thousands of simultaneous requests
+* UIs stay responsive while work runs in the background
+* Databases serve multiple clients at once
+* Writing sequential software ignores the machine under your feet
+
+== CPU Architecture
+
+[graphviz]
+----
+digraph cpu {
+    rankdir=TB
+    node [shape=rect, style=filled, fontname="sans-serif", margin="0.3,0.15"]
+    edge [color=white]
+
+    CPU [label="CPU", fillcolor="#4a90d9", fontcolor=white, width=6]
+
+    C1 [label="Core 1", fillcolor="#5ba05b", fontcolor=white]
+    C2 [label="Core 2", fillcolor="#5ba05b", fontcolor=white]
+    CN [label="Core N", fillcolor="#5ba05b", fontcolor=white, style="filled,dashed"]
+
+    T1a [label="HW Thread", fillcolor="#c97c2e", fontcolor=white]
+    T1b [label="HW Thread", fillcolor="#c97c2e", fontcolor=white]
+    T2a [label="HW Thread", fillcolor="#c97c2e", fontcolor=white]
+    T2b [label="HW Thread", fillcolor="#c97c2e", fontcolor=white]
+    Tna [label="HW Thread", fillcolor="#c97c2e", fontcolor=white]
+    Tnb [label="HW Thread", fillcolor="#c97c2e", fontcolor=white]
+
+    CPU -> C1
+    CPU -> C2
+    CPU -> CN
+    C1 -> T1a
+    C1 -> T1b
+    C2 -> T2a
+    C2 -> T2b
+    CN -> Tna
+    CN -> Tnb
+}
+----
