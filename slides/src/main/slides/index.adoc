@@ -173,13 +173,13 @@ digraph mem {
 
 * `Thread` wraps a unit of work
 * Pass work as a `Runnable` to the constructor
-* Runnable: one method, no state, easy to test
+* Runnable: one required method, easy to test
 * Start execution with `thread.start()`
 
 == Why Not Extend Thread?
 
 * Mixes WHAT to do with HOW to run it
-* Prevents reuse in thread pools later
+* Single inheritance — can only extend Thread, not another class
 * Composition over inheritance
 * Bad practice — avoid it
 
