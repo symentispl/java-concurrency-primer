@@ -73,6 +73,9 @@ run = "./gradlew :code:clean"
 description = "Create distributable upgrade zip (slides-bootstrap-vX.Y.Z.zip)"
 run = "bash bin/package.sh"
 
-[tasks.exec]
-description = "Run a Java example: mise run exec -- ClassName"
-run = "java code/src/main/java/$1.java"
+[tasks."java:exec"]
+description = "Run a Java example: mise run java:exec -- ClassName"
+run = """
+#!/usr/bin/env bash
+java "code/src/main/java/$1.java"
+"""
