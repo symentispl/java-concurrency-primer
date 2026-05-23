@@ -4,7 +4,7 @@ ruby.compile = false
 [tools]
 ruby = "3.3"
 node = "22"
-java = "temurin-21"
+java = "temurin-25"
 "npm:@mermaid-js/mermaid-cli" = "latest"
 "npm:decktape" = "3.16.1"
 
