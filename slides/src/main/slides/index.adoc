@@ -262,7 +262,6 @@ digraph thread_states {
 
 * `Thread.sleep()`, `Object.wait()`, `Thread.join()` throw `InterruptedException` when interrupted
 * The interrupted flag is cleared before the exception is thrown
-* Do not swallow it silently — re-throw or restore the flag
 
 == Non-Blocking Code Must Check the Flag
 
@@ -291,5 +290,6 @@ void run() {
     while (!Thread.interrupted()) {
         processNextItem();
     }
+    Thread.currentThread().interrupt(); // restore for the caller
 }
 ----
