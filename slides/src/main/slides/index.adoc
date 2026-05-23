@@ -328,3 +328,74 @@ void main() throws InterruptedException {
     worker.join();      // wait for clean exit
 }
 ----
+
+== Shared Mutable State
+
+* Two threads, one variable, at least one writes → data race
+* Result depends on scheduling — different every run
+* The counter problem: two threads each add 1, ten thousand times
+* Expected: 20000 — Actual: less, and unpredictable
+
+== i++ is Three Steps
+
+[graphviz]
+----
+digraph interleave {
+    rankdir=TB
+    node [shape=rect, style=filled, fontname="monospace", fontsize=11, margin="0.25,0.15"]
+    edge [color=white, fontcolor="#cccccc", fontname="sans-serif", fontsize=10]
+
+    A1 [label="Thread A: LOAD counter → 5",  fillcolor="#4a90d9", fontcolor=white]
+    B1 [label="Thread B: LOAD counter → 5",  fillcolor="#c97c2e", fontcolor=white]
+    A2 [label="Thread A: ADD  5+1=6",         fillcolor="#4a90d9", fontcolor=white]
+    B2 [label="Thread B: ADD  5+1=6",         fillcolor="#c97c2e", fontcolor=white]
+    A3 [label="Thread A: STORE counter=6",    fillcolor="#4a90d9", fontcolor=white]
+    B3 [label="Thread B: STORE counter=6",    fillcolor="#c97c2e", fontcolor=white]
+    R  [label="counter=6  ← expected 7, one increment lost", fillcolor="#7a3a3a", fontcolor=white]
+
+    A1 -> B1
+    B1 -> A2
+    A2 -> B2
+    B2 -> A3
+    A3 -> B3
+    B3 -> R
+}
+----
+
+== Why CPU Caches Exist
+
+* RAM access: ~100 CPU cycles — a CPU operation: ~1 cycle
+* Without caches, every instruction stalls waiting for memory
+* Each core has its own private L1/L2 cache — fast, small
+* Shared L3 cache, then main memory — slow, large
+
+== Caches and Visibility
+
+* Thread A writes `counter` — stored in its L1 cache first
+* Thread B reads `counter` from its own L1 — may see a stale value
+* No guarantee writes are immediately visible to other cores
+* `synchronized` flushes and invalidates caches — ensures visibility
+
+== The Broken Counter
+
+[source,java]
+----
+static int counter = 0;
+
+static class Incrementer implements Runnable {
+    public void run() {
+        for (int i = 0; i < 10_000; i++) {
+            counter++; // not atomic: load, add, store
+        }
+    }
+}
+
+void main() throws InterruptedException {
+    var t1 = new Thread(new Incrementer());
+    var t2 = new Thread(new Incrementer());
+    t1.start(); t2.start();
+    t1.join();  t2.join();
+    System.out.println("Expected: 20000");
+    System.out.println("Actual:   " + counter); // usually less
+}
+----
