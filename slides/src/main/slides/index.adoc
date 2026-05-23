@@ -62,3 +62,83 @@ digraph cpu {
     CN -> Tnb
 }
 ----
+
+== Processes
+
+* A running instance of a program
+* Has its own isolated memory space
+* Owns resources: open files, network sockets
+* Heavy to create, expensive to context-switch
+
+== Threads
+
+* A unit of execution inside a process
+* Shares memory with sibling threads in the same process
+* In Linux: implemented as tasks via `clone()`
+* Scheduled by the kernel preemptively
+
+== Processes vs Threads
+
+[graphviz]
+----
+digraph mem {
+    rankdir=LR
+    compound=true
+    node [shape=rect, style=filled, fontname="sans-serif", margin="0.3,0.15"]
+    edge [color=white]
+
+    subgraph cluster_p1 {
+        label="Process A"
+        style=filled
+        fillcolor="#1a3a5c"
+        fontcolor=white
+        color=white
+
+        H1 [label="Heap\n(shared)", fillcolor="#4a90d9", fontcolor=white, shape=cylinder]
+
+        subgraph cluster_t1 {
+            label="Thread 1"
+            style=filled
+            fillcolor="#2a4a2a"
+            color=white
+            fontcolor=white
+            S1 [label="Stack", fillcolor="#5ba05b", fontcolor=white]
+        }
+        subgraph cluster_t2 {
+            label="Thread 2"
+            style=filled
+            fillcolor="#2a4a2a"
+            color=white
+            fontcolor=white
+            S2 [label="Stack", fillcolor="#5ba05b", fontcolor=white]
+        }
+    }
+
+    subgraph cluster_p2 {
+        label="Process B"
+        style=filled
+        fillcolor="#3a1a1a"
+        fontcolor=white
+        color=white
+
+        H2 [label="Heap\n(shared)", fillcolor="#c97c2e", fontcolor=white, shape=cylinder]
+
+        subgraph cluster_t3 {
+            label="Thread 1"
+            style=filled
+            fillcolor="#2a4a2a"
+            color=white
+            fontcolor=white
+            S3 [label="Stack", fillcolor="#5ba05b", fontcolor=white]
+        }
+        subgraph cluster_t4 {
+            label="Thread 2"
+            style=filled
+            fillcolor="#2a4a2a"
+            color=white
+            fontcolor=white
+            S4 [label="Stack", fillcolor="#5ba05b", fontcolor=white]
+        }
+    }
+}
+----
