@@ -250,3 +250,22 @@ digraph thread_states {
     RUNNABLE -> TERMINATED [label="run()\nreturns"]
 }
 ----
+
+== Interruption is a Request, Not a Command
+
+* `thread.interrupt()` sets a flag on the target thread
+* The thread must check and respond — it is cooperative
+* Cannot forcibly stop a running thread (why `stop()` was removed)
+* Safe shutdown requires the thread's cooperation
+
+== Blocking Methods React Automatically
+
+* `sleep()`, `wait()`, `join()` throw `InterruptedException` when interrupted
+* The interrupted flag is cleared before the exception is thrown
+* Catch it, handle it, or let it propagate
+
+== Non-Blocking Code Must Check the Flag
+
+* `Thread.interrupted()` — checks and clears the flag (static)
+* `thread.isInterrupted()` — checks without clearing (instance)
+* Check in long-running loops to stay responsive
