@@ -200,3 +200,17 @@ class Task implements Runnable {
 Thread t = new Thread(new Task());
 t.start();
 ----
+
+== Starting a Thread
+
+* `thread.start()` — requests a new OS thread from the JVM
+* Returns immediately — does not block the caller
+* Never call `run()` directly — it runs in the current thread
+* `thread.stop()` — deprecated, scheduled for removal, never use
+
+== Waiting for Completion
+
+* `thread.join()` — blocks until the thread terminates
+* `thread.join(millis)` — with a time limit
+* `thread.isAlive()` — non-blocking check
+* Throws `InterruptedException` — always handle it
