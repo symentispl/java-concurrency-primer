@@ -168,3 +168,35 @@ digraph mem {
 * *Act 1 — Foundation:* what threads are and how to use them
 * *Act 2 — Correctness:* what goes wrong and how to prevent it
 * *Act 3 — Production:* patterns, tools, and how to investigate
+
+== Creating a Thread
+
+* `Thread` wraps a unit of work
+* Pass work as a `Runnable` to the constructor
+* Runnable: one method, no state, easy to test
+* Start execution with `thread.start()`
+
+== Why Not Extend Thread?
+
+* Mixes WHAT to do with HOW to run it
+* Prevents reuse in thread pools later
+* Composition over inheritance
+* Bad practice — avoid it
+
+== The Right Way
+
+[source,java]
+----
+// avoid: mixes work with execution
+class Task extends Thread {
+    public void run() { /* work */ }
+}
+
+// prefer: Runnable separates concerns
+class Task implements Runnable {
+    public void run() { /* work */ }
+}
+
+Thread t = new Thread(new Task());
+t.start();
+----
