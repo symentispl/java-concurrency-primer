@@ -146,7 +146,7 @@ digraph mem {
 == Java Threads
 
 * `java.lang.Thread` — one class, one abstraction
-* One Java thread = one OS thread (1:1 mapping on Linux)
+* One Java thread = one OS thread (1:1 mapping)
 * JVM handles the platform-specific details
 * Same threading code runs on Linux, macOS, Windows
 
