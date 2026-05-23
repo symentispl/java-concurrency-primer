@@ -269,3 +269,27 @@ digraph thread_states {
 * `Thread.interrupted()` — static, checks and clears the *calling* thread's flag
 * `thread.isInterrupted()` — checks without clearing (instance)
 * Check in long-running loops to stay responsive
+
+== Don't Swallow InterruptedException
+
+* Catching and ignoring it hides the shutdown signal
+* Option 1: re-throw — `throws InterruptedException`
+* Option 2: restore the flag — `Thread.currentThread().interrupt()`
+* Never: `catch (InterruptedException e) { }` with empty body
+
+== Handling Interruption
+
+[source,java]
+----
+// blocking code — let the exception propagate
+void waitForResult() throws InterruptedException {
+    Thread.sleep(1000);
+}
+
+// non-blocking loop — check the flag manually
+void run() {
+    while (!Thread.interrupted()) {
+        processNextItem();
+    }
+}
+----
