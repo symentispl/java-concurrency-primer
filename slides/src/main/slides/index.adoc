@@ -242,8 +242,10 @@ digraph thread_states {
     RUNNABLE -> BLOCKED    [label="waiting\nfor lock"]
     BLOCKED  -> RUNNABLE   [label="lock\nacquired"]
     RUNNABLE -> WAITING    [label="wait()\njoin()"]
-    WAITING  -> RUNNABLE   [label="notify()\ninterrupt()"]
+    WAITING  -> BLOCKED    [label="notify()\nnotifyAll()"]
+    WAITING  -> RUNNABLE   [label="interrupt()\njoin() done"]
     RUNNABLE -> TIMED      [label="sleep(t)\nwait(t)"]
+    TIMED    -> BLOCKED    [label="notify()\nnotifyAll()"]
     TIMED    -> RUNNABLE   [label="timeout\ninterrupt()"]
     RUNNABLE -> TERMINATED [label="run()\nreturns"]
 }
