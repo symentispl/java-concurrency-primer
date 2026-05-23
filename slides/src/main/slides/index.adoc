@@ -345,13 +345,13 @@ digraph interleave {
     node [shape=rect, style=filled, fontname="monospace", fontsize=11, margin="0.25,0.15"]
     edge [color=white, fontcolor="#cccccc", fontname="sans-serif", fontsize=10]
 
-    A1 [label="LOAD counter → 5",  fillcolor="#4a90d9", fontcolor=white]
-    A2 [label="ADD  5+1=6",        fillcolor="#4a90d9", fontcolor=white]
-    A3 [label="STORE counter=6",   fillcolor="#4a90d9", fontcolor=white]
+    A1 [label="Thread A: LOAD counter → 5",  fillcolor="#4a90d9", fontcolor=white]
+    A2 [label="Thread A: ADD  5+1=6",        fillcolor="#4a90d9", fontcolor=white]
+    A3 [label="Thread A: STORE counter=6",   fillcolor="#4a90d9", fontcolor=white]
 
-    B1 [label="LOAD counter → 5",  fillcolor="#c97c2e", fontcolor=white]
-    B2 [label="ADD  5+1=6",        fillcolor="#c97c2e", fontcolor=white]
-    B3 [label="STORE counter=6",   fillcolor="#c97c2e", fontcolor=white]
+    B1 [label="Thread B: LOAD counter → 5",  fillcolor="#c97c2e", fontcolor=white]
+    B2 [label="Thread B: ADD  5+1=6",        fillcolor="#c97c2e", fontcolor=white]
+    B3 [label="Thread B: STORE counter=6",   fillcolor="#c97c2e", fontcolor=white]
 
     R  [label="counter=6  ← expected 7, one increment lost", fillcolor="#7a3a3a", fontcolor=white]
 
@@ -426,6 +426,7 @@ synchronized (lock) { counter++; }
 ----
 
 * Every Java object can serve as a lock
+* Synchronized method is shorthand for `synchronized (this)`
 * Prefer synchronized block — makes the lock object explicit
 
 == The Fixed Counter
