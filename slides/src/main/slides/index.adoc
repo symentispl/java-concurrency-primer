@@ -406,3 +406,51 @@ void main() throws InterruptedException {
     System.out.println("Actual:   " + counter); // usually less
 }
 ----
+
+== synchronized — Mutual Exclusion
+
+* Acquires a lock before entering the protected block
+* Only one thread holds the lock at a time — others block
+* Guarantees: mutual exclusion AND memory visibility
+* Lock released automatically when the block exits
+
+== Every Object Has a Lock
+
+[source,java]
+----
+// synchronized method — locks on 'this'
+synchronized void increment() { counter++; }
+
+// synchronized block — explicit lock object (preferred)
+synchronized (lock) { counter++; }
+----
+
+* Every Java object can serve as a lock
+* Prefer synchronized block — makes the lock object explicit
+
+== The Fixed Counter
+
+[source,java]
+----
+static int counter = 0;
+static final Object lock = new Object();
+
+static class Incrementer implements Runnable {
+    public void run() {
+        for (int i = 0; i < 10_000; i++) {
+            synchronized (lock) {
+                counter++; // protected: only one thread at a time
+            }
+        }
+    }
+}
+
+void main() throws InterruptedException {
+    var t1 = new Thread(new Incrementer());
+    var t2 = new Thread(new Incrementer());
+    t1.start(); t2.start();
+    t1.join();  t2.join();
+    System.out.println("Expected: 20000");
+    System.out.println("Actual:   " + counter); // always 20000
+}
+----
