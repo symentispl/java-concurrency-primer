@@ -1,0 +1,45 @@
+= Slides bootstrap
+:idprefix:
+:stem: asciimath
+:backend: html
+:source-highlighter: highlightjs
+:highlightjs-style: github
+:revealjs_history: true
+:revealjs_theme: night
+:revealjs_controls: false
+:revealjs_width: 1920
+:revealjs_height: 1080
+:revealjs_plugins: revealjs-plugins.js
+:imagesdir: images
+:customcss: css/custom.css
+:icons: font
+:title-slide-background-image: pexels-pixabay-327049.jpg
+
+== code
+
+[source,java]
+----
+System.out.println("Hello");
+----
+
+== graphviz
+
+[graphviz]
+----
+digraph{
+    A->B
+    C->D
+    D->B
+    B->C
+}
+----
+
+== mermaid
+
+[mermaid]
+----
+graph TD
+  A[Start] --> B{Decision}
+  B -->|Yes| C[OK]
+  B -->|No| D[Cancel]
+----
