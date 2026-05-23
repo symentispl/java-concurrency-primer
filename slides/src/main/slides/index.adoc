@@ -214,3 +214,37 @@ t.start();
 * `thread.join(millis)` — with a time limit
 * `thread.isAlive()` — non-blocking check
 * Throws `InterruptedException` — a checked exception, must catch or declare
+
+== Thread States
+
+* 6 states defined in `Thread.State` enum
+* Inspect with `thread.getState()`
+* Visible in thread dumps and monitoring tools
+* State changes driven by JVM and OS scheduler
+
+== Thread Lifecycle
+
+[graphviz]
+----
+digraph thread_states {
+    rankdir=LR
+    node [shape=rect, style=filled, fontname="sans-serif", margin="0.25,0.15"]
+    edge [fontname="sans-serif", fontsize=11, color=white, fontcolor="#cccccc"]
+
+    NEW          [label="NEW",          fillcolor="#4a90d9", fontcolor=white]
+    RUNNABLE     [label="RUNNABLE",     fillcolor="#5ba05b", fontcolor=white]
+    BLOCKED      [label="BLOCKED",      fillcolor="#c97c2e", fontcolor=white]
+    WAITING      [label="WAITING",      fillcolor="#c97c2e", fontcolor=white]
+    TIMED        [label="TIMED\nWAITING", fillcolor="#c97c2e", fontcolor=white]
+    TERMINATED   [label="TERMINATED",   fillcolor="#7a3a3a", fontcolor=white]
+
+    NEW      -> RUNNABLE   [label="start()"]
+    RUNNABLE -> BLOCKED    [label="waiting\nfor lock"]
+    BLOCKED  -> RUNNABLE   [label="lock\nacquired"]
+    RUNNABLE -> WAITING    [label="wait()\njoin()"]
+    WAITING  -> RUNNABLE   [label="notify()\ninterrupt()"]
+    RUNNABLE -> TIMED      [label="sleep(t)\nwait(t)"]
+    TIMED    -> RUNNABLE   [label="timeout\ninterrupt()"]
+    RUNNABLE -> TERMINATED [label="run()\nreturns"]
+}
+----
