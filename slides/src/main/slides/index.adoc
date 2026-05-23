@@ -74,7 +74,7 @@ digraph cpu {
 
 * A unit of execution inside a process
 * Shares memory with sibling threads in the same process
-* In Linux: implemented as tasks via `clone()`
+* Lighter to create and switch than a process
 * Scheduled by the kernel preemptively
 
 == Processes vs Threads
@@ -112,6 +112,9 @@ digraph mem {
             fontcolor=white
             S2 [label="Stack", fillcolor="#5ba05b", fontcolor=white]
         }
+
+        S1 -> H1
+        S2 -> H1
     }
 
     subgraph cluster_p2 {
@@ -139,6 +142,9 @@ digraph mem {
             fontcolor=white
             S4 [label="Stack", fillcolor="#5ba05b", fontcolor=white]
         }
+
+        S3 -> H2
+        S4 -> H2
     }
 }
 ----
