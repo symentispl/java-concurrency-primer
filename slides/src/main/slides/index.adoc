@@ -293,3 +293,38 @@ void run() {
     Thread.currentThread().interrupt(); // restore for the caller
 }
 ----
+
+== Cooperative Shutdown — The Pattern
+
+* Worker checks `Thread.interrupted()` in its loop
+* Main calls `worker.interrupt()` to signal shutdown
+* Worker exits the loop, restores the flag, returns
+* Main calls `worker.join()` — waits for clean exit
+
+== Cooperative Shutdown — In Practice
+
+[source,java]
+----
+class Worker implements Runnable {
+    public void run() {
+        while (!Thread.interrupted()) {
+            doWork();
+        }
+        Thread.currentThread().interrupt(); // restore flag
+    }
+    private void doWork() {
+        try { Thread.sleep(100); }
+        catch (InterruptedException e) {
+            Thread.currentThread().interrupt(); // restore, loop will exit
+        }
+    }
+}
+
+void main() throws InterruptedException {
+    var worker = new Thread(new Worker());
+    worker.start();
+    Thread.sleep(350);
+    worker.interrupt(); // request shutdown
+    worker.join();      // wait for clean exit
+}
+----
