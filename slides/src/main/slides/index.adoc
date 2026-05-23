@@ -142,3 +142,17 @@ digraph mem {
     }
 }
 ----
+
+== Java Threads
+
+* `java.lang.Thread` — one class, one abstraction
+* One Java thread = one OS thread (1:1 mapping on Linux)
+* JVM handles the platform-specific details
+* Same threading code runs on Linux, macOS, Windows
+
+== What Java Gives Us
+
+* Create and control threads
+* Synchronize access to shared memory
+* Coordinate between threads
+* Inspect and monitor what is running
