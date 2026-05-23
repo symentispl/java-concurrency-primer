@@ -1,4 +1,4 @@
-= Slides bootstrap
+= Java Concurrency Primer
 :idprefix:
 :stem: asciimath
 :backend: html
@@ -14,32 +14,3 @@
 :customcss: css/custom.css
 :icons: font
 :title-slide-background-image: pexels-pixabay-327049.jpg
-
-== code
-
-[source,java]
-----
-System.out.println("Hello");
-----
-
-== graphviz
-
-[graphviz]
-----
-digraph{
-    A->B
-    C->D
-    D->B
-    B->C
-}
-----
-
-== mermaid
-
-[mermaid]
-----
-graph TD
-  A[Start] --> B{Decision}
-  B -->|Yes| C[OK]
-  B -->|No| D[Cancel]
-----
