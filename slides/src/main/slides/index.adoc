@@ -571,7 +571,7 @@ digraph deadlock {
 ----
 // Thread A: lockA → lockB
 synchronized (lockA) {
-    Thread.sleep(50);
+    Thread.sleep(50); // ensures both threads hold their first lock before racing for the second
     synchronized (lockB) { /* never reached */ }
 }
 
@@ -601,7 +601,7 @@ synchronized (lockA) {
     synchronized (lockB) { System.out.println("Thread A: done"); }
 }
 
-// Thread B: lockA → lockB — same order, no deadlock
+// Thread B: lockA → lockB — same order, no deadlock  (was: lockB first)
 synchronized (lockA) {
     Thread.sleep(50);
     synchronized (lockB) { System.out.println("Thread B: done"); }
@@ -613,7 +613,7 @@ synchronized (lockA) {
 * Threads are active — not blocked, not waiting
 * Each thread keeps reacting to the other's state
 * No progress is made despite constant CPU activity
-* Harder to detect than deadlock: the program does not hang, it just spins
+* Harder to diagnose than deadlock: the program does not hang, it just spins
 
 == Livelock in Java
 
@@ -622,11 +622,15 @@ synchronized (lockA) {
 // Worker A wants r1→r2, Worker B wants r2→r1
 // each acquires its first, finds the second taken, backs off — in sync
 
-if (!second.tryAcquire()) {
-    first.release();  // politely step aside
-    System.out.println(name + ": backing off");
-    Thread.sleep(10); // fixed delay — both threads wake up together and collide again
-    continue;         // retry — same result
+while (attempts < 20) {
+    // ... acquire first resource ...
+    if (!second.tryAcquire()) {
+        first.release();  // politely step aside
+        System.out.println(name + ": backing off");
+        Thread.sleep(10); // fixed delay — both threads wake up together and collide again
+        continue;         // retry — same result
+    }
+    // ... use both resources, return ...
 }
 ----
 
