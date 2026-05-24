@@ -587,7 +587,7 @@ synchronized (lockB) {
 * Always acquire multiple locks in the same fixed order across all threads
 * If every thread takes Lock 1 before Lock 2, circular wait is impossible
 * Establish a consistent global order and document it — it is a contract
-* `System.identityHashCode(lock)` gives a stable ordering when locks aren't naturally ordered
+* When there is no natural order, assign each lock an integer ID and always acquire lower IDs first
 
 == Lock Ordering — Fixed
 
@@ -601,7 +601,7 @@ synchronized (lockA) {
     synchronized (lockB) { System.out.println("Thread A: done"); }
 }
 
-// Thread B — same order:
+// Thread B: lockA → lockB — same order, no deadlock
 synchronized (lockA) {
     Thread.sleep(50);
     synchronized (lockB) { System.out.println("Thread B: done"); }
