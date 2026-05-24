@@ -16,22 +16,22 @@ class BoundedBufferLock {
         void put(int item) throws InterruptedException {
             lock.lock();
             try {
-                while (count == data.length) notFull.await();
+                while (count == data.length) notFull.await(); // only producers wait here — releases lock
                 data[head] = item;
                 head = (head + 1) % data.length;
                 count++;
-                notEmpty.signal();
+                notEmpty.signal(); // wake exactly one consumer — signal() is safe, only consumers wait here
             } finally { lock.unlock(); }
         }
 
         int take() throws InterruptedException {
             lock.lock();
             try {
-                while (count == 0) notEmpty.await();
+                while (count == 0) notEmpty.await(); // only consumers wait here — releases lock
                 int item = data[tail];
                 tail = (tail + 1) % data.length;
                 count--;
-                notFull.signal();
+                notFull.signal(); // wake exactly one producer — signal() is safe, only producers wait here
                 return item;
             } finally { lock.unlock(); }
         }
