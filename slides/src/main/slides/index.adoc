@@ -456,6 +456,23 @@ void main() throws InterruptedException {
 }
 ----
 
+== synchronized is Reentrant
+
+* A thread that holds a lock can acquire it again without blocking
+* Java tracks a re-entry counter per thread on each monitor
+* The lock releases only when the counter reaches zero
+* Recursive calls and synchronized-to-synchronized delegation are safe
+
+[source,java]
+----
+synchronized void increment() { count++; }
+
+synchronized void incrementTwice() {
+    increment(); // same thread, same lock — re-entry, not deadlock
+    increment();
+}
+----
+
 == synchronized Isn't Enough
 
 * You hold the lock — but the condition you need isn't true yet
