@@ -1024,7 +1024,7 @@ jcmd <pid> Thread.print -l    # thread dump with lock info
 
 [source,text]
 ----
-"Thread-0" #13 prio=5 os_prio=0 cpu=1.23ms elapsed=5.32s tid=0x... nid=0x...
+"Thread-0" #13 [12345] prio=5 os_prio=0 cpu=1.23ms elapsed=5.32s tid=0x... nid=12345
    java.lang.Thread.State: BLOCKED (on object monitor)
     - waiting to lock <0x000...> (a java.lang.Object)
     - locked <0x000...> (a java.lang.Object)
@@ -1145,5 +1145,5 @@ ps -eLo pid,lwp,stat | grep <pid>   # list LWPs with state column (R/S/D/Z)
 pidstat -t -p <pid> 1     # per-thread CPU + context-switch rate, 1s interval
 ----
 
-* Map JVM thread to OS thread: `nid=0x1a3` in thread dump → decimal `419` → match in `top -H`
+* Map JVM thread to OS thread: `nid=12345` in thread dump matches `TID 12345` in `top -H` directly (JDK 17+: nid is already decimal)
 * High context-switch rate with low CPU → threads fighting over a lock or spinning

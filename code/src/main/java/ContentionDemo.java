@@ -96,7 +96,7 @@ class ContentionDemo {
 
     void main(String[] args) throws InterruptedException {
         String mode = (args.length > 0) ? args[0] : "both";
-        int total = 10_000, producers = 4, consumers = 4;
+        int total = 50_000, producers = 4, consumers = 4;
 
         if (mode.equals("sync") || mode.equals("both")) {
             long start = System.currentTimeMillis();
