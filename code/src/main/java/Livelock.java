@@ -29,7 +29,7 @@ class Livelock {
             int attempts = 0;
             while (attempts < 20) {
                 if (!first.tryAcquire()) {
-                    try { Thread.sleep(10); } catch (InterruptedException e) { return; }
+                    try { Thread.sleep(5); } catch (InterruptedException e) { return; }
                     continue;
                 }
                 // brief pause — let the other worker grab its first resource too
@@ -37,7 +37,7 @@ class Livelock {
                 if (!second.tryAcquire()) {
                     first.release(); // be polite — release and back off
                     System.out.println(name + ": backing off (attempt " + (++attempts) + ")");
-                    try { Thread.sleep(10); } catch (InterruptedException e) { return; }
+                    try { Thread.sleep(5); } catch (InterruptedException e) { return; }
                     continue;
                 }
                 // got both resources
@@ -61,6 +61,6 @@ class Livelock {
         b.start();
         a.join();
         b.join();
-        System.out.println("Done — neither worker made progress.");
+        System.out.println("Done.");
     }
 }
