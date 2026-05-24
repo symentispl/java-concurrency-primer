@@ -625,7 +625,7 @@ synchronized (lockA) {
 if (!second.tryAcquire()) {
     first.release();  // politely step aside
     System.out.println(name + ": backing off");
-    Thread.sleep(10); // wait... so does the other thread
+    Thread.sleep(10); // fixed delay — both threads wake up together and collide again
     continue;         // retry — same result
 }
 ----
