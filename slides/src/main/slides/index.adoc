@@ -489,21 +489,21 @@ digraph monitor {
 
 * Must be called inside `synchronized` on the same object
 * `wait()` releases the lock atomically — no window between release and sleep
-* Thread can wake up without being notified (spurious wakeup)
+* Thread can wake up with no `notify()` call — the JVM/OS may do it (spurious wakeup)
 * Always check condition in a `while` loop — never `if`
 
 [source,java]
 ----
-// correct — re-checks condition after every wakeup
-while (!condition) { object.wait(); }
+// correct — re-checks after every wakeup (call inside synchronized; throws InterruptedException)
+while (!condition) { wait(); }
 
-// wrong — misses spurious wakeups
-if (!condition) { object.wait(); }
+// wrong — misses spurious wakeups and condition changes
+if (!condition) { wait(); }
 ----
 
 == notify() vs notifyAll()
 
 * `notify()` — wakes one arbitrary waiting thread
 * `notifyAll()` — wakes all waiting threads; each re-checks its condition
-* `notify()` is risky when multiple conditions share one monitor
+* `notify()` is risky: with producers and consumers on the same object, it may wake the wrong thread
 * Use `notifyAll()` as the safe default
