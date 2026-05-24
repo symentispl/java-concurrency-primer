@@ -695,3 +695,64 @@ while (attempts < 20) {
 * *Deadlock* — threads block forever waiting for each other → prevent with lock ordering
 * *Livelock* — threads spin forever reacting to each other → prevent with randomness or limits
 * *Starvation* — one thread never gets access → prevent with fairness and short critical sections
+
+== synchronized Has Limits
+
+* Single wait set — all waiting threads share one queue; producers and consumers cannot be targeted separately
+* `notifyAll()` wakes every waiting thread — even those whose condition is still false
+* No way to attempt locking without blocking — if the lock is held, you wait
+* No fairness guarantee — a thread can be skipped indefinitely
+
+== The Lock Interface
+
+* `lock()` — acquire the lock; blocks until available
+* `unlock()` — release the lock; must always be called
+* `tryLock()` — returns `true` if acquired, `false` immediately if not
+* `tryLock(time, unit)` — times out instead of blocking forever
+* `lockInterruptibly()` — blocks but responds to interrupt
+
+[source,java]
+----
+lock.lock();
+try {
+    // critical section
+} finally {
+    lock.unlock(); // guaranteed even if an exception is thrown
+}
+----
+
+== ReentrantLock
+
+* Drop-in replacement for `synchronized` blocks — same mutual exclusion, explicit API
+* Reentrant like `synchronized`: the same thread can acquire it again without blocking
+* Explicit lock/unlock — more control, more responsibility
+* `new ReentrantLock(true)` enables fair mode (FIFO order — previewed here, explained later)
+
+[source,java]
+----
+private final Lock lock = new ReentrantLock();
+
+void increment() {
+    lock.lock();
+    try { count++; }
+    finally { lock.unlock(); }
+}
+----
+
+== Condition — Per-Queue Waiting
+
+* `lock.newCondition()` creates a separate wait queue bound to the lock
+* `await()` — releases the lock and parks the thread (like `wait()`)
+* `signal()` — wakes one thread waiting on this Condition only (like `notify()`)
+* `signalAll()` — wakes all threads waiting on this Condition (like `notifyAll()`)
+* One lock can have multiple independent Conditions — each with its own queue
+
+[source,java]
+----
+Lock lock = new ReentrantLock();
+Condition ready = lock.newCondition();
+
+// inside lock:
+while (!condition) ready.await();  // releases lock, parks here
+ready.signal();                    // wakes one waiter on 'ready' only
+----
