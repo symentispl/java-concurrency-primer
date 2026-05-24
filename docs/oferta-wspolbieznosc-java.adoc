@@ -1,0 +1,236 @@
+= Proponowane szkolenia
+:doctype: article
+:encoding: utf-8
+:lang: pl
+:toc:
+:toc-title: Spis treści
+:toclevels: 2
+:icons: font
+:source-highlighter: rouge
+:pdf-page-size: A4
+:pdf-fontsdir: GEM_FONTS_DIR
+
+== Współbieżność w Javie — od podstaw do praktyki
+
+=== Jednodniowe szkolenie
+
+Szkolenie wprowadza uczestników w świat programowania współbieżnego w języku Java.
+Uczestnicy poznają mechanizmy działania wątków na poziomie sprzętu i systemu operacyjnego,
+cykl życia wątku, pułapki współdzielonego stanu zmiennego oraz mechanizmy synchronizacji.
+Szkolenie łączy teorię z przykładami uruchamianymi na żywo — każde zagadnienie ilustruje
+działający kod.
+
+==== Odbiorcy
+
+Szkolenie przeznaczone jest dla programistów Java znających podstawy języka,
+którzy nie mieli wcześniej kontaktu z programowaniem wielowątkowym.
+
+Wymagane przygotowanie:
+
+* znajomość składni Java
+* podstawy programowania obiektowego (klasy, interfejsy, dziedziczenie)
+* znajomość podstawowych kolekcji Java
+
+Wiedza z zakresu programowania wielowątkowego nie jest wymagana.
+
+== 1. Dlaczego współbieżność
+
+* Nowoczesne procesory — wiele rdzeni, wiele wątków sprzętowych
+* Każdy rdzeń wykonuje instrukcje niezależnie
+* Hyperthreading — 2 wątki sprzętowe na jeden rdzeń fizyczny
+* Oprogramowanie sekwencyjne ignoruje możliwości sprzętu
+
+Współbieżność jako fundament nowoczesnego oprogramowania:
+
+* serwery obsługują tysiące równoległych żądań
+* interfejsy użytkownika pozostają responsywne podczas pracy w tle
+* bazy danych obsługują wielu klientów jednocześnie
+
+Procesy i wątki w systemie operacyjnym Linux:
+
+* proces — izolowana instancja programu z własną przestrzenią adresową
+* wątek — jednostka wykonania wewnątrz procesu, współdzieląca pamięć
+* wątek w Linuksie — zadanie (task) tworzone przez wywołanie `clone()`
+* wątek Java — odpowiada jednemu wątkowi OS w modelu 1:1
+
+== 2. Tworzenie i uruchamianie wątków
+
+Tworzenie wątku w Javie:
+
+* klasa `Thread` — jedna abstrakcja dla wszystkich platform
+* przekazanie pracy jako `Runnable` do konstruktora
+* `Runnable` — jeden wymagany interfejs, separacja zadania od mechanizmu uruchamiania
+* dziedziczenie po `Thread` — zła praktyka, miesza co robić z jak uruchamiać
+
+Uruchamianie i oczekiwanie:
+
+* `thread.start()` — zleca JVM utworzenie nowego wątku OS, wraca natychmiast
+* nie wolno wywoływać `run()` bezpośrednio — kod wykona się w bieżącym wątku
+* `thread.stop()` — wycofany, zaplanowany do usunięcia, nigdy nie używać
+* `thread.join()` — blokuje wywołującego do zakończenia wątku
+* `thread.join(millis)` — oczekiwanie z limitem czasu
+* `thread.isAlive()` — nieblokujące sprawdzenie stanu
+
+== 3. Cykl życia wątku
+
+Wątek w JVM przechodzi przez sześć stanów zdefiniowanych w `Thread.State`:
+
+* `NEW` — utworzony, jeszcze nierozpoczęty
+* `RUNNABLE` — wykonywany lub gotowy do wykonania
+* `BLOCKED` — czeka na zwolnienie monitora
+* `WAITING` — czeka bez limitu czasu (np. `wait()`, `join()`)
+* `TIMED_WAITING` — czeka z limitem czasu (np. `sleep(t)`, `wait(t)`)
+* `TERMINATED` — zakończony
+
+Inspekcja stanu:
+
+* `thread.getState()` — bieżący stan wątku
+* zrzuty wątków (thread dumps) — `jcmd <pid> Thread.print`
+* narzędzia monitorowania (JVisualVM, JFR)
+
+== 4. Przerwanie wątku — model kooperacyjny
+
+Zatrzymanie wątku w Javie jest kooperatywne — wątek musi sam zareagować.
+
+Mechanizm przerwania:
+
+* `thread.interrupt()` — ustawia flagę przerwania na wątku docelowym
+* wątek musi samodzielnie sprawdzić flagę i zareagować
+* nie można wymusić zatrzymania działającego wątku — dlatego `stop()` usunięto
+
+Reagowanie na przerwanie:
+
+* metody blokujące (`sleep()`, `wait()`, `join()`) rzucają `InterruptedException` — flaga jest kasowana przed rzuceniem wyjątku
+* `Thread.interrupted()` — statyczna, sprawdza i kasuje flagę bieżącego wątku
+* `thread.isInterrupted()` — instancyjna, sprawdza bez kasowania
+
+Kontrakt obsługi `InterruptedException`:
+
+* nigdy nie ignorować — puste `catch` ukrywa sygnał zamknięcia
+* opcja 1: propagacja — `throws InterruptedException`
+* opcja 2: przywrócenie flagi — `Thread.currentThread().interrupt()`
+
+Wzorzec kooperatywnego zamknięcia:
+
+* wątek roboczy sprawdza `Thread.interrupted()` w pętli
+* wątek główny wywołuje `worker.interrupt()` jako sygnał
+* wątek roboczy kończy iterację, przywraca flagę, kończy działanie
+* wątek główny wywołuje `worker.join()` — czeka na czyste zakończenie
+
+== 5. Współdzielony stan zmienny — wyścigi danych
+
+Wyścig danych (data race) — dwa wątki, jedna zmienna, co najmniej jeden zapis:
+
+* wynik zależy od kolejności szeregowania przez scheduler — nieprzewidywalny
+* operacja `i++` nie jest atomowa — trzy kroki: wczytaj, dodaj 1, zapisz
+* dwa wątki mogą wczytać tę samą wartość i obydwa zapisać tę samą wynikową wartość — jeden zapis zostaje utracony
+
+Pamięć podręczna CPU a widoczność:
+
+* dostęp do RAM: ~100 cykli CPU; operacja CPU: ~1 cykl
+* każdy rdzeń posiada własną prywatną pamięć L1/L2 — szybką i małą
+* współdzielona pamięć L3, następnie pamięć główna — wolna i duża
+* wątek A zapisuje do swojej pamięci L1 — wątek B może widzieć przestarzałą wartość
+* brak gwarancji, że zapisy są kiedykolwiek widoczne dla innych rdzeni
+
+== 6. Wzajemne wykluczanie — `synchronized`
+
+Słowo kluczowe `synchronized` zapewnia dwie gwarancje jednocześnie:
+
+* wzajemne wykluczanie — tylko jeden wątek w bloku chronionym w danym momencie
+* widoczność pamięci — zapisane wartości są widoczne dla następnego wątku wchodzącego w blok
+
+Dwie formy składniowe:
+
+* metoda zsynchronizowana — blokada na `this`, skrót dla `synchronized(this)`
+* blok zsynchronizowany — jawny obiekt blokady (zalecana forma)
+
+Każdy obiekt Java posiada wbudowany monitor:
+
+* dowolny obiekt może pełnić rolę blokady
+* blok zsynchronizowany czyni obiekt blokady jawnym — ułatwia analizę kodu
+* blokada jest zwalniana automatycznie po wyjściu z bloku
+
+== 7. Zmienne warunkowe — `wait` i `notify`
+
+Koordynacja wątków gdy jeden czeka na wynik pracy drugiego.
+
+Problem producent-konsument:
+
+* producent dodaje elementy do kolejki
+* konsument pobiera elementy z kolejki
+* konsument musi czekać gdy kolejka jest pusta
+* producent musi czekać gdy kolejka jest pełna
+
+Mechanizm `wait`/`notify`:
+
+* `object.wait()` — zwalnia monitor i zawiesza wątek
+* `object.notify()` — budzi jeden czekający wątek
+* `object.notifyAll()` — budzi wszystkie czekające wątki
+* muszą być wywoływane wewnątrz bloku `synchronized` na tym samym obiekcie
+
+Wzorzec sprawdzenia warunku w pętli:
+
+* `wait()` może się zakończyć bez sygnału (spurious wakeup)
+* zawsze sprawdzać warunek w pętli `while`, nigdy w `if`
+
+== 8. Wątki daemon i priorytety
+
+Wątki daemon:
+
+* działają w tle — JVM kończy się gdy pozostają tylko wątki daemon
+* typowe zastosowania: garbage collector, timery, monitorowanie
+* `thread.setDaemon(true)` — musi być wywołane przed `start()`
+* wątki użytkownika (non-daemon) — JVM czeka na ich zakończenie
+
+Priorytety wątków:
+
+* wartości od 1 (`MIN_PRIORITY`) do 10 (`MAX_PRIORITY`), domyślnie 5
+* `thread.setPriority(n)` — wskazówka dla schedulera, nie gwarancja
+* scheduler OS ignoruje priorytety Javy na wielu platformach
+* nie należy polegać na priorytetach jako mechanizmie synchronizacji
+
+== 9. Obserwacja i diagnostyka wątków
+
+Inspekcja wątków narzędziem `jcmd`:
+
+* `jcmd <pid> Thread.print` — zrzut wszystkich wątków z ich stanami i śladami stosu
+* `jcmd <pid> VM.info` — informacje o JVM
+* `jcmd -l` — lista uruchomionych procesów Java
+
+Java Flight Recorder (JFR):
+
+* wbudowane profilowanie z niskim narzutem (~1-2%)
+* rejestruje zdarzenia: kontencja na monitorach, parki wątków, GC
+* `jcmd <pid> JFR.start` — uruchomienie nagrania
+* `jcmd <pid> JFR.dump filename=recording.jfr` — zapis do pliku
+* analiza w JDK Mission Control (JMC)
+
+Sygnały problemów widoczne w diagnostyce:
+
+* wątki w stanie `BLOCKED` — kontencja na blokadach
+* wątki w stanie `WAITING` bez postępu — potencjalny deadlock
+* wysoka kontencja na monitorach — nadmierne użycie `synchronized`
+
+== 10. Podsumowanie i dobre praktyki
+
+Najważniejsze zasady pisania bezpiecznego kodu współbieżnego:
+
+* unikać współdzielonego stanu zmiennego — jeśli nie ma stanu, nie ma wyścigu
+* preferować obiekty niemutowalne (immutable)
+* wyraźnie określać, które pola są współdzielone i jak są chronione
+* nie ignorować `InterruptedException` — zawsze obsłużyć lub propagować
+* nie polegać na priorytetach wątków jako mechanizmie koordynacji
+
+Kiedy stosować poszczególne mechanizmy:
+
+* `synchronized` — prosta ochrona sekcji krytycznej, małe bloki kodu
+* `wait`/`notify` — koordynacja wątków, wzorzec producent-konsument
+* wątki daemon — zadania pomocnicze działające w tle
+
+Co dalej:
+
+* `java.util.concurrent` — wyższy poziom abstrakcji: `ExecutorService`, `BlockingQueue`, `CountDownLatch`
+* `java.util.concurrent.atomic` — operacje atomowe bez blokad
+* wirtualne wątki (Virtual Threads, Java 21) — nowy model współbieżności
+* `CompletableFuture` — programowanie asynchroniczne
