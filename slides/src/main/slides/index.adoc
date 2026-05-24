@@ -1141,7 +1141,7 @@ java -XX:StartFlightRecording=duration=10s,filename=lock.jfr \
 [source,bash]
 ----
 top -H -p <pid>           # per-thread CPU — shows native thread IDs
-ps -eLf | grep <pid>      # list all LWPs (OS threads) with states
+ps -eLo pid,lwp,stat | grep <pid>   # list LWPs with state column (R/S/D/Z)
 pidstat -t -p <pid> 1     # per-thread CPU + context-switch rate, 1s interval
 ----
 
