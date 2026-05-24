@@ -757,3 +757,58 @@ Condition ready = lock.newCondition();
 while (!condition) ready.await();  // condition = some boolean field; releases lock, parks here
 ready.signal();                    // wakes one waiter on 'ready' only
 ----
+
+== Multiple Conditions — The Key Win
+
+* `synchronized`: one wait set → `notifyAll()` wakes producers AND consumers
+* With Lock: declare separate conditions — `notFull` and `notEmpty`
+* `put()` waits on `notFull`; signals `notEmpty` when done
+* `take()` waits on `notEmpty`; signals `notFull` when done
+* `signal()` is now safe — only the right threads are woken
+
+[source,java]
+----
+private final Condition notFull  = lock.newCondition();
+private final Condition notEmpty = lock.newCondition();
+----
+
+== BoundedBuffer — Producer Side (Lock)
+
+[source,java]
+----
+private final Lock lock          = new ReentrantLock();
+private final Condition notFull  = lock.newCondition();
+private final Condition notEmpty = lock.newCondition();
+
+void put(int item) throws InterruptedException {
+    lock.lock();
+    try {
+        while (count == buffer.length) notFull.await();
+        buffer[head] = item;
+        head = (head + 1) % buffer.length;
+        count++;
+        notEmpty.signal(); // wake one consumer — no need for signalAll
+    } finally {
+        lock.unlock();
+    }
+}
+----
+
+== BoundedBuffer — Consumer Side (Lock)
+
+[source,java]
+----
+int take() throws InterruptedException {
+    lock.lock();
+    try {
+        while (count == 0) notEmpty.await();
+        int item = buffer[tail];
+        tail = (tail + 1) % buffer.length;
+        count--;
+        notFull.signal(); // wake one producer — no need for signalAll
+        return item;
+    } finally {
+        lock.unlock();
+    }
+}
+----
