@@ -141,6 +141,14 @@ digraph cpu {
 }
 ----
 
+== meet the operating system
+
+* organizes tasks into processes & threads
+* schedules these task into available CPU cores
+* uses prioritized tasks queue (aka runqueue)
+* implements different scheduling algorithms (there is no fits all solution)
+* tries to be "fair", so everybody gets it share of CPU time
+
 === Processes
 
 * A running instance of a program
@@ -154,6 +162,22 @@ digraph cpu {
 * Shares memory with sibling threads in the same process
 * Lighter to create and switch than a process
 * Scheduled by the kernel preemptively
+
+=== Preemptive scheduling
+
+The kernel does not ask your thread for permission to pause it.
+
+Every thread gets a *time slice* — typically 1–10 ms. When the slice expires, the kernel freezes the thread mid-instruction, saves its state (registers, program counter), and hands the CPU to another thread. Your thread has no say.
+
+This happens *between any two machine instructions* — including inside what looks like a single Java statement.
+
+* `counter++` is three instructions: LOAD → ADD → STORE
+* The kernel can pause the thread after LOAD, run another thread, then resume
+* The other thread sees the old value — and writes its own result on top of yours
+* You just lost an update, silently
+
+This is not a bug in Java. It is how every modern OS works. +
+It is why concurrent code requires explicit coordination.
 
 === Processes vs Threads
 
