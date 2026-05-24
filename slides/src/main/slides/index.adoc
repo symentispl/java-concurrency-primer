@@ -538,3 +538,72 @@ synchronized int take() throws InterruptedException {
     return item;
 }
 ----
+
+== Deadlock
+
+* Each thread holds a lock the other needs
+* Neither thread can proceed — both block forever
+* The program hangs: no output, no crash, no error
+* Requires four conditions: mutual exclusion, hold-and-wait, no preemption, circular wait
+
+[graphviz]
+----
+digraph deadlock {
+    rankdir=LR
+    node [shape=rect, style=filled, fontname="sans-serif", fontsize=11, margin="0.25,0.15"]
+    edge [fontname="sans-serif", fontsize=10, color=white, fontcolor="#cccccc"]
+
+    TA [label="Thread A", fillcolor="#4a90d9", fontcolor=white]
+    TB [label="Thread B", fillcolor="#4a90d9", fontcolor=white]
+    L1 [label="Lock 1",   fillcolor="#c97c2e", fontcolor=white]
+    L2 [label="Lock 2",   fillcolor="#c97c2e", fontcolor=white]
+
+    TA -> L1 [label="holds"]
+    TA -> L2 [label="waiting for", style=dashed]
+    TB -> L2 [label="holds"]
+    TB -> L1 [label="waiting for", style=dashed]
+}
+----
+
+== Deadlock in Java
+
+[source,java]
+----
+// Thread A: lockA → lockB
+synchronized (lockA) {
+    Thread.sleep(50);
+    synchronized (lockB) { /* never reached */ }
+}
+
+// Thread B: lockB → lockA  ← opposite order → deadlock
+synchronized (lockB) {
+    Thread.sleep(50);
+    synchronized (lockA) { /* never reached */ }
+}
+----
+
+== Preventing Deadlock — Lock Ordering
+
+* Always acquire multiple locks in the same fixed order across all threads
+* If every thread takes Lock 1 before Lock 2, circular wait is impossible
+* Establish a consistent global order and document it — it is a contract
+* `System.identityHashCode(lock)` gives a stable ordering when locks aren't naturally ordered
+
+== Lock Ordering — Fixed
+
+[source,java]
+----
+// both threads: lockA → lockB — no cycle possible
+
+// Thread A:
+synchronized (lockA) {
+    Thread.sleep(50);
+    synchronized (lockB) { System.out.println("Thread A: done"); }
+}
+
+// Thread B — same order:
+synchronized (lockA) {
+    Thread.sleep(50);
+    synchronized (lockB) { System.out.println("Thread B: done"); }
+}
+----
