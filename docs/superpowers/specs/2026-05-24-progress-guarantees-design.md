@@ -207,64 +207,73 @@ Expected: "Starting", then "Thread A: done" and "Thread B: done" in either order
 
 ### Livelock.java
 
-Two threads each back off when they detect the other is active. Both exhaust their retry limit and give up — neither ever makes progress. The `volatile` keyword ensures each thread sees the other's latest state (briefly explained in a comment; covered fully in Act 3).
+Two workers each need two resources. Each acquires its first resource (via `synchronized tryAcquire()`), then tries the second. If the second is taken, it releases the first and backs off — being "polite". Both back off at the same time and retry in sync → livelock. Uses only `synchronized`, no `volatile`.
 
 ```java
-// Demonstrates livelock: two threads react to each other and make no progress.
+// Demonstrates livelock: two workers keep backing off and make no progress.
 // Run: mise run java:exec -- Livelock
 class Livelock {
 
-    // volatile: writes by one thread are immediately visible to the other
-    static volatile boolean active1 = false;
-    static volatile boolean active2 = false;
+    static class Resource {
+        private final String name;
+        private boolean inUse = false;
 
-    static class Worker1 implements Runnable {
-        public void run() {
-            active1 = true;
-            int attempts = 0;
-            while (attempts < 20) {
-                if (!active2) {
-                    System.out.println("Worker 1: done");
-                    active1 = false;
-                    return;
-                }
-                active1 = false;
-                System.out.println("Worker 1: backing off (attempt " + (++attempts) + ")");
-                try { Thread.sleep(10); } catch (InterruptedException e) { return; }
-                active1 = true;
-            }
-            active1 = false;
-            System.out.println("Worker 1: gave up after " + attempts + " attempts");
+        Resource(String name) { this.name = name; }
+
+        synchronized boolean tryAcquire() {
+            if (inUse) return false;
+            inUse = true;
+            return true;
         }
+
+        synchronized void release() { inUse = false; }
     }
 
-    static class Worker2 implements Runnable {
+    static class Worker implements Runnable {
+        private final String name;
+        private final Resource first;
+        private final Resource second;
+
+        Worker(String name, Resource first, Resource second) {
+            this.name = name;
+            this.first = first;
+            this.second = second;
+        }
+
         public void run() {
-            active2 = true;
             int attempts = 0;
             while (attempts < 20) {
-                if (!active1) {
-                    System.out.println("Worker 2: done");
-                    active2 = false;
-                    return;
+                if (!first.tryAcquire()) {
+                    try { Thread.sleep(10); } catch (InterruptedException e) { return; }
+                    continue;
                 }
-                active2 = false;
-                System.out.println("Worker 2: backing off (attempt " + (++attempts) + ")");
-                try { Thread.sleep(10); } catch (InterruptedException e) { return; }
-                active2 = true;
+                if (!second.tryAcquire()) {
+                    first.release(); // be polite — release and back off
+                    System.out.println(name + ": backing off (attempt " + (++attempts) + ")");
+                    try { Thread.sleep(10); } catch (InterruptedException e) { return; }
+                    continue;
+                }
+                // got both resources
+                second.release();
+                first.release();
+                System.out.println(name + ": done");
+                return;
             }
-            active2 = false;
-            System.out.println("Worker 2: gave up after " + attempts + " attempts");
+            System.out.println(name + ": gave up after " + attempts + " attempts");
         }
     }
 
     void main() throws InterruptedException {
-        var one = new Thread(new Worker1());
-        var two = new Thread(new Worker2());
-        one.start();
-        two.start();
-        one.join();
-        two.join();
+        var r1 = new Resource("R1");
+        var r2 = new Resource("R2");
+        // Worker A wants r1 then r2; Worker B wants r2 then r1
+        // Each acquires its first, finds the second taken, backs off — in sync
+        var a = new Thread(new Worker("Worker A", r1, r2));
+        var b = new Thread(new Worker("Worker B", r2, r1));
+        a.start();
+        b.start();
+        a.join();
+        b.join();
         System.out.println("Done — neither worker made progress.");
     }
 }
