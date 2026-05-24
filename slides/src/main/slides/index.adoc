@@ -636,3 +636,23 @@ if (!second.tryAcquire()) {
 * Impose a retry limit: after N attempts, one thread proceeds regardless
 * Use a coordinator: a third party decides who goes first
 * Timeout: if resources cannot be acquired within a deadline, signal an error
+
+== Starvation
+
+* A thread is perpetually denied access even though others keep making progress
+* The system works — but one thread never gets its turn
+* Causes: `notify()` wakes an arbitrary thread, long-held locks, thread priorities
+* Silent: no hang, no error — the starved thread simply never runs
+
+== Preventing Starvation
+
+* Use `notifyAll()` instead of `notify()` — all threads get a chance to re-check
+* Keep `synchronized` blocks short — reduce time others are locked out
+* Do not rely on thread priorities — the OS scheduler does not honour them reliably
+* `java.util.concurrent` provides fair lock implementations for production use
+
+== The Three Failure Modes
+
+* *Deadlock* — threads block forever waiting for each other → prevent with lock ordering
+* *Livelock* — threads spin forever reacting to each other → prevent with randomness or limits
+* *Starvation* — one thread never gets access → prevent with fairness and short critical sections
