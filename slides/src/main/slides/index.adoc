@@ -461,15 +461,19 @@ void main() throws InterruptedException {
 * A thread that holds a lock can acquire it again without blocking
 * Java tracks a re-entry counter per thread on each monitor
 * The lock releases only when the counter reaches zero
-* Recursive calls and synchronized-to-synchronized delegation are safe
+* Both methods lock on `this` — calling one from another is safe, not a deadlock
 
 [source,java]
 ----
-synchronized void increment() { count++; }
+class Counter {
+    int count;
 
-synchronized void incrementTwice() {
-    increment(); // same thread, same lock — re-entry, not deadlock
-    increment();
+    synchronized void increment() { count++; }
+
+    synchronized void incrementTwice() {
+        increment(); // same thread, same lock (this) — re-entry, not deadlock
+        increment();
+    }
 }
 ----
 
