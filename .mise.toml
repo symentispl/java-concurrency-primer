@@ -79,3 +79,12 @@ run = """
 #!/usr/bin/env bash
 java "code/src/main/java/$1.java" "${@:2}"
 """
+
+[tasks."java:exec:jfr"]
+description = "Run a Java example with JFR profiling: mise run java:exec:jfr -- ClassName [args...] → writes ClassName.jfr"
+run = """
+#!/usr/bin/env bash
+java -XX:StartFlightRecording=filename=$1.jfr,settings=profile,dumponexit=true \
+     "code/src/main/java/$1.java" "${@:2}"
+echo "JFR recording written to $1.jfr"
+"""
