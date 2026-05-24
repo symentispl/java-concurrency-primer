@@ -146,7 +146,7 @@ digraph cpu {
 * organizes tasks into processes & threads
 * schedules these task into available CPU cores
 * uses prioritized tasks queue (aka runqueue)
-* implements different scheduling algorithms (there is no fits all solution)
+* implements different scheduling algorithms (there is no "fit all sizes" solution)
 * tries to be "fair", so everybody gets it share of CPU time
 
 === Processes
@@ -170,6 +170,8 @@ The kernel does not ask your thread for permission to pause it.
 Every thread gets a *time slice* — typically 1–10 ms. When the slice expires, the kernel freezes the thread mid-instruction, saves its state (registers, program counter), and hands the CPU to another thread. Your thread has no say.
 
 This happens *between any two machine instructions* — including inside what looks like a single Java statement.
+
+=== this is not a bug
 
 * `counter++` is three instructions: LOAD → ADD → STORE
 * The kernel can pause the thread after LOAD, run another thread, then resume
@@ -252,7 +254,19 @@ digraph mem {
 }
 ----
 
-== What Java Gives Us
+[role="highlight_title"]
+== welcome to the machine
+
+image::https://media3.giphy.com/media/v1.Y2lkPTc5MGI3NjExenkzMWFveWJtYnJqbm5sZm9sdXp2YjBlZzBpeHJ3OGpsYmNoZ2d0NSZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/mYqaRkXyoGbcY/giphy.gif[background]
+
+=== What Java Gives Us
+
+actually this is not Java, +
+but Java Virtual Machine capability 
+
+
+Think of Java language as frontend for +
+Java Virtual Machine backend
 
 * Create and control threads
 * Synchronize access to shared memory
@@ -976,3 +990,85 @@ void write() {
 * `ReentrantReadWriteLock` — optimises read-heavy workloads; many readers or one exclusive writer
 * `StampedLock` (Java 8+) — maximum throughput; adds optimistic reads — more complex API, not reentrant
 * All in `java.util.concurrent.locks`
+
+== When Your App Hangs
+
+* JVM process is running — but nothing is making progress and logs have stopped
+* This is a hang, not a crash — threads are alive but stuck
+* A *thread dump* captures the state of every thread at one moment in time
+* Reading thread dumps is the first skill for any Java developer dealing with production incidents
+* Tool: `jcmd` — ships with the JDK, the modern replacement for `jstack`
+
+== jcmd — Thread Dumps
+
+* `jcmd` — list all JVM processes with their PIDs
+* `jcmd <pid> Thread.print` — print a full thread dump to stdout
+* `jcmd <pid> Thread.print -l` — include lock ownership information
+* `jcmd <pid> help` — list all available commands for that JVM
+
+[source,bash]
+----
+jcmd                          # list all JVM processes
+jcmd <pid> Thread.print       # thread dump
+jcmd <pid> Thread.print -l    # thread dump with lock info
+----
+
+== Reading a Thread Dump
+
+* Each thread entry shows: name, state, and what it is waiting for
+* `RUNNABLE` — actively executing or ready to run on a CPU
+* `BLOCKED` — waiting to acquire a `synchronized` monitor
+* `WAITING` — parked indefinitely (`Object.wait()`, `LockSupport.park()`)
+* `TIMED_WAITING` — parked with a timeout (`Thread.sleep()`, `wait(timeout)`)
+* Key signal: multiple threads `BLOCKED` on the *same* monitor address
+
+[source]
+----
+"Thread-0" #13 prio=5 cpu=1.23ms tid=0x... nid=0x...
+   java.lang.Thread.State: BLOCKED (on object monitor)
+    - waiting to lock <0x000...> (a java.lang.Object)
+    - locked <0x000...> (a java.lang.Object)
+----
+
+== Deadlock in a Thread Dump
+
+* `Deadlock.java` hangs by design — two threads hold locks in opposite order
+* `jcmd` detects the cycle automatically and prints `Found one Java-level deadlock:`
+* Both threads shown: what each *holds* and what each is *waiting for*
+
+_Live demo:_
+
+[source,bash]
+----
+# terminal 1 — start the program (it will hang)
+mise run java:exec -- Deadlock
+
+# terminal 2 — find the PID and take a thread dump
+jcmd
+jcmd <pid> Thread.print -l
+----
+
+== Thread States — Cheat Sheet
+
+[cols="1,2,2",options="header"]
+|===
+| State | Meaning | Common cause
+
+| `RUNNABLE`
+| Running or ready to run
+| Normal execution, tight loop, I/O
+
+| `BLOCKED`
+| Waiting for a `synchronized` lock
+| Contention on a monitor
+
+| `WAITING`
+| Parked indefinitely
+| `wait()`, `park()`, `join()`
+
+| `TIMED_WAITING`
+| Parked with a timeout
+| `sleep()`, `wait(n)`, `parkNanos()`
+|===
+
+Rule of thumb: many threads `BLOCKED` → lock contention; many threads `WAITING` → something upstream is slow or stuck
