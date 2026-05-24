@@ -42,10 +42,10 @@ class ProducerConsumer {
         }
 
         public void run() {
-            for (int i = 1; i <= 10; i++) {
+            for (int i = 0; i < 10; i++) {
                 try {
-                    buffer.put(i);
-                    System.out.println("Produced: " + i);
+                    buffer.put(i + 1);
+                    System.out.println("Produced: " + (i + 1)); // printed after lock released — consumer may print first
                     Thread.sleep(50);
                 } catch (InterruptedException e) {
                     Thread.currentThread().interrupt();
