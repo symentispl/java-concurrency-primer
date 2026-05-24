@@ -710,6 +710,7 @@ while (attempts < 20) {
 * `tryLock()` — returns `true` if acquired, `false` immediately if not
 * `tryLock(time, unit)` — times out instead of blocking forever
 * `lockInterruptibly()` — blocks but responds to interrupt
+* `newCondition()` — creates a Condition wait queue bound to this lock
 
 [source,java]
 ----
@@ -753,6 +754,6 @@ Lock lock = new ReentrantLock();
 Condition ready = lock.newCondition();
 
 // inside lock:
-while (!condition) ready.await();  // releases lock, parks here
+while (!condition) ready.await();  // condition = some boolean field; releases lock, parks here
 ready.signal();                    // wakes one waiter on 'ready' only
 ----
