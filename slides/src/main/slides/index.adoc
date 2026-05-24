@@ -458,10 +458,11 @@ void main() throws InterruptedException {
 
 == synchronized Isn't Enough
 
+* You hold the lock — but the condition you need isn't true yet
 * You enter the critical section — but the data isn't ready
 * Spinning (busy-waiting) wastes CPU and holds the lock
 * Other threads cannot make progress while you spin
-* You need to release the lock and sleep until things change
+* You need to release the lock and wait until things change
 
 == Monitor = Lock + Wait Set
 
@@ -475,11 +476,11 @@ digraph monitor {
     ENTER [label="Thread: entering",            fillcolor="#4a90d9", fontcolor=white]
     LOCK  [label="Lock\n(one thread at a time)", fillcolor="#5ba05b", fontcolor=white]
     WAIT  [label="Wait Set\n(parked threads)",   fillcolor="#c97c2e", fontcolor=white]
-    EXIT  [label="Thread: done",                 fillcolor="#7a3a3a", fontcolor=white]
+    EXIT  [label="Thread: done",                 fillcolor="#4a90d9", fontcolor=white]
 
     ENTER -> LOCK [label="acquire"]
     LOCK  -> WAIT [label="wait()\nreleases lock"]
-    WAIT  -> LOCK [label="notify()\nre-compete for lock"]
+    WAIT  -> LOCK [label="woken by notify()\nre-compete for lock"]
     LOCK  -> EXIT [label="release"]
 }
 ----
