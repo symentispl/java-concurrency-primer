@@ -798,6 +798,7 @@ void put(int item) throws InterruptedException {
 
 [source,java]
 ----
+// lock, notFull, notEmpty — same fields as put(), shared in the same class
 int take() throws InterruptedException {
     lock.lock();
     try {
@@ -805,7 +806,7 @@ int take() throws InterruptedException {
         int item = buffer[tail];
         tail = (tail + 1) % buffer.length;
         count--;
-        notFull.signal(); // wake one producer — no need for signalAll
+        notFull.signal(); // wake one producer — signal() is safe, only producers wait on notFull
         return item;
     } finally {
         lock.unlock();
