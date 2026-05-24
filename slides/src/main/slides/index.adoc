@@ -58,12 +58,17 @@ Understanding concurrency is not about writing `synchronized` by hand. It is abo
 
 The scale at which modern systems run makes every concurrency mistake a production incident.
 
-=== The Hardware Reality
+[role="highlight_title"]
+=== is this your dream job?
 
-* Modern CPUs: 4, 8, 16+ cores
-* Each core executes instructions independently
-* Hyper-threading: 2 hardware threads per physical core
-* The hardware has been parallel for decades
+image::https://media1.giphy.com/media/v1.Y2lkPTc5MGI3NjExdTd3eTZsZjhsZjV1dmY0MHk3OGMyZjI5eTZ4anltMHlpanlwNXdpYyZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/yKxo7c9Q6pZoUzAfPu/giphy.gif[background,size=contain]
+
+=== !
+
+if everyone can vibecode, + 
+what makes you special? +
+what makes you different? +
+what makes you fit for a job?
 
 === Concurrency is Everywhere
 
@@ -72,37 +77,66 @@ The scale at which modern systems run makes every concurrency mistake a producti
 * Databases serve multiple clients at once
 * Writing sequential software ignores the machine under your feet
 
+=== The Hardware Reality
+
+* Modern CPUs: 4, 8, 16+ cores
+* Each core executes instructions independently
+* Hyper-threading: 2 hardware threads per physical core
+* The hardware has been parallel for decades
+
 === CPU Architecture
 
 [graphviz]
 ----
 digraph cpu {
     rankdir=TB
-    node [shape=rect, style=filled, fontname="sans-serif", margin="0.3,0.15"]
-    edge [color=white]
+    node [shape=rect, style=filled, fontname="sans-serif", fontsize=11, margin="0.25,0.15"]
+    edge [color=white, fontname="sans-serif", fontsize=10, fontcolor="#cccccc"]
 
-    CPU [label="CPU", fillcolor="#4a90d9", fontcolor=white, width=6]
+    subgraph cluster_c0 {
+        label="Core 0"
+        style=filled; fillcolor="#15253a"; color="#4a90d9"; fontcolor=white
 
-    C1 [label="Core 1", fillcolor="#5ba05b", fontcolor=white]
-    C2 [label="Core 2", fillcolor="#5ba05b", fontcolor=white]
-    CN [label="Core N", fillcolor="#5ba05b", fontcolor=white, style="filled,dashed"]
+        EU0  [label="Execution Unit\n2 HW threads", fillcolor="#4a90d9", fontcolor=white]
+        L1_0 [label="L1 — 48 KB (private)", fillcolor="#5ba05b", fontcolor=white]
+        L2_0 [label="L2 — 2 MB (private)",  fillcolor="#3a8a3a", fontcolor=white]
+        EU0 -> L1_0 -> L2_0
+    }
 
-    T1a [label="HW Thread", fillcolor="#c97c2e", fontcolor=white]
-    T1b [label="HW Thread", fillcolor="#c97c2e", fontcolor=white]
-    T2a [label="HW Thread", fillcolor="#c97c2e", fontcolor=white]
-    T2b [label="HW Thread", fillcolor="#c97c2e", fontcolor=white]
-    Tna [label="HW Thread", fillcolor="#c97c2e", fontcolor=white]
-    Tnb [label="HW Thread", fillcolor="#c97c2e", fontcolor=white]
+    subgraph cluster_c1 {
+        label="Core 1"
+        style=filled; fillcolor="#15253a"; color="#4a90d9"; fontcolor=white
 
-    CPU -> C1
-    CPU -> C2
-    CPU -> CN
-    C1 -> T1a
-    C1 -> T1b
-    C2 -> T2a
-    C2 -> T2b
-    CN -> Tna
-    CN -> Tnb
+        EU1  [label="Execution Unit\n2 HW threads", fillcolor="#4a90d9", fontcolor=white]
+        L1_1 [label="L1 — 48 KB (private)", fillcolor="#5ba05b", fontcolor=white]
+        L2_1 [label="L2 — 2 MB (private)",  fillcolor="#3a8a3a", fontcolor=white]
+        EU1 -> L1_1 -> L2_1
+    }
+
+    subgraph cluster_cn {
+        label="Core N"
+        style="filled,dashed"; fillcolor="#15253a"; color="#4a90d9"; fontcolor=white
+
+        EUn  [label="Execution Unit\n2 HW threads", fillcolor="#4a90d9", fontcolor=white, style="filled,dashed"]
+        L1_n [label="L1 — 48 KB (private)", fillcolor="#5ba05b", fontcolor=white, style="filled,dashed"]
+        L2_n [label="L2 — 2 MB (private)",  fillcolor="#3a8a3a", fontcolor=white, style="filled,dashed"]
+        EUn -> L1_n -> L2_n
+    }
+
+    { rank=same; EU0; EU1; EUn }
+
+    BUS [label="Ring Bus / Mesh Interconnect — cache coherency (MESI protocol)", fillcolor="#6a3a7a", fontcolor=white, width=11]
+    L3  [label="L3 Cache — 36 MB — shared by all cores",                        fillcolor="#c97c2e", fontcolor=white, width=11]
+    MC  [label="Memory Controller", fillcolor="#7a5a2a", fontcolor=white, width=5]
+    RAM [label="DDR5 RAM",          fillcolor="#2a3a55", fontcolor=white, width=5, shape=cylinder]
+
+    L2_0 -> BUS
+    L2_1 -> BUS
+    L2_n -> BUS
+
+    BUS -> L3
+    L3  -> MC  [label="L3 miss"]
+    MC  -> RAM [label="~70 ns"]
 }
 ----
 
