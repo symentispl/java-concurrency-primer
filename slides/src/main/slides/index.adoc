@@ -813,3 +813,42 @@ int take() throws InterruptedException {
     }
 }
 ----
+
+== Fairness and tryLock
+
+* `new ReentrantLock(true)` — fair lock: threads acquire in FIFO arrival order
+* Fair mode prevents starvation; costs throughput (no “barging” by newly arriving threads)
+* `lock.tryLock()` — returns `true` if acquired, `false` immediately if not; never blocks
+* `lock.tryLock(100, TimeUnit.MILLISECONDS)` — times out instead of blocking forever; useful for deadlock avoidance
+
+[source,java]
+----
+if (lock.tryLock()) {
+    try { /* got it */ }
+    finally { lock.unlock(); }
+} else {
+    // lock was held — do something else
+}
+----
+
+== ReentrantReadWriteLock
+
+* `rwLock.readLock().lock()` — shared: many readers can hold simultaneously
+* `rwLock.writeLock().lock()` — exclusive: blocks all readers and other writers
+* Use when reads are frequent and writes are rare (caches, configuration, lookup tables)
+* Both locks are separate `Lock` objects — each needs its own try-finally
+
+[source,java]
+----
+ReadWriteLock rwLock = new ReentrantReadWriteLock();
+
+void read()  { rwLock.readLock().lock();  try { /* ... */ } finally { rwLock.readLock().unlock();  } }
+void write() { rwLock.writeLock().lock(); try { /* ... */ } finally { rwLock.writeLock().unlock(); } }
+----
+
+== Lock Implementations
+
+* `ReentrantLock` — general-purpose; replaces `synchronized`; supports tryLock, fairness, multiple conditions
+* `ReentrantReadWriteLock` — optimises read-heavy workloads; many readers or one exclusive writer
+* `StampedLock` (Java 8+) — maximum throughput; adds optimistic reads — more complex API, not reentrant
+* All in `java.util.concurrent.locks`
