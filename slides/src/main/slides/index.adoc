@@ -1022,9 +1022,9 @@ jcmd <pid> Thread.print -l    # thread dump with lock info
 * `TIMED_WAITING` — parked with a timeout (`Thread.sleep()`, `wait(timeout)`)
 * Key signal: multiple threads `BLOCKED` on the *same* monitor address
 
-[source]
+[source,text]
 ----
-"Thread-0" #13 prio=5 cpu=1.23ms tid=0x... nid=0x...
+"Thread-0" #13 prio=5 os_prio=0 cpu=1.23ms elapsed=5.32s tid=0x... nid=0x...
    java.lang.Thread.State: BLOCKED (on object monitor)
     - waiting to lock <0x000...> (a java.lang.Object)
     - locked <0x000...> (a java.lang.Object)
