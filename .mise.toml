@@ -74,8 +74,8 @@ description = "Create distributable upgrade zip (slides-bootstrap-vX.Y.Z.zip)"
 run = "bash bin/package.sh"
 
 [tasks."java:exec"]
-description = "Run a Java example: mise run java:exec -- ClassName"
+description = "Run a Java example: mise run java:exec -- ClassName [args...]"
 run = """
 #!/usr/bin/env bash
-java "code/src/main/java/$1.java"
+java "code/src/main/java/$1.java" "${@:2}"
 """
