@@ -1,6 +1,7 @@
 // Demonstrates lock contention difference between synchronized and ReentrantLock.
 // Run: mise run java:exec -- ContentionDemo sync
 //      mise run java:exec -- ContentionDemo lock
+import java.util.concurrent.atomic.*;
 import java.util.concurrent.locks.*;
 
 class ContentionDemo {
@@ -71,7 +72,7 @@ class ContentionDemo {
             throws InterruptedException {
         var threads = new Thread[producers + consumers];
         int perProducer = total / producers;
-        int perConsumer = total / consumers;
+        var consumed = new AtomicInteger(0); // shared counter — consumers race to claim items
 
         for (int i = 0; i < producers; i++) {
             int id = i;
@@ -85,7 +86,7 @@ class ContentionDemo {
         for (int i = 0; i < consumers; i++) {
             threads[producers + i] = new Thread(() -> {
                 try {
-                    for (int j = 0; j < perConsumer; j++)
+                    while (consumed.getAndIncrement() < total) // atomically claim one item
                         buf.take();
                 } catch (InterruptedException e) { Thread.currentThread().interrupt(); }
             });
