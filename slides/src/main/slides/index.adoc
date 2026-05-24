@@ -1083,7 +1083,8 @@ Rule of thumb: many threads `BLOCKED` → lock contention; many threads `WAITING
 == Java Flight Recorder
 
 * JFR continuously records JVM events: thread states, GC, I/O, locks, method samples
-* `settings=profile` — higher-frequency sampling; suitable for short demo recordings
+* `settings=profile` — higher-frequency sampling; lock threshold defaults to *10 ms* (most in-memory locks invisible)
+* `code/jfr/contention.jfc` — custom config that lowers locking threshold to *1 ms* for high-frequency contention demos
 * Output: a `.jfr` file opened in JDK Mission Control
 
 [source,bash]
@@ -1097,9 +1098,9 @@ jcmd <pid> JFR.dump name=demo filename=demo.jfr
 # stop and dump
 jcmd <pid> JFR.stop name=demo filename=demo.jfr
 
-# or start at launch
-java -XX:StartFlightRecording=duration=30s,filename=demo.jfr \
-     code/src/main/java/ContentionDemo.java sync
+# or start at launch with precompiled classes
+java -XX:StartFlightRecording=dumponexit=true,filename=demo.jfr,settings=code/jfr/contention.jfc \
+     -cp code/build/classes/java/main ContentionDemo sync
 ----
 
 == JMC — Three Views That Matter
@@ -1121,11 +1122,9 @@ _Live demo:_
 
 [source,bash]
 ----
-java -XX:StartFlightRecording=duration=10s,filename=sync.jfr \
-     code/src/main/java/ContentionDemo.java sync
+mise run java:exec:jfr -- ContentionDemo sync   # → ContentionDemo.jfr
 
-java -XX:StartFlightRecording=duration=10s,filename=lock.jfr \
-     code/src/main/java/ContentionDemo.java lock
+mise run java:exec:jfr -- ContentionDemo lock   # → ContentionDemo.jfr
 ----
 
 * `sync.jfr`: one contended monitor — the `SyncBuffer` instance; `notifyAll()` wakes all waiters

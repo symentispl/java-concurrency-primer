@@ -85,7 +85,7 @@ description = "Run a precompiled Java example with JFR profiling: mise run java:
 depends = ["build-code"]
 run = """
 #!/usr/bin/env bash
-java -XX:StartFlightRecording=filename=$1.jfr,settings=profile,dumponexit=true \
+java -XX:StartFlightRecording=filename=$1.jfr,settings=$(pwd)/code/jfr/contention.jfc,dumponexit=true \
      -cp code/build/classes/java/main "$1" "${@:2}"
 echo "JFR recording written to $1.jfr"
 """
