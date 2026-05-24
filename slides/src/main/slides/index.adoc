@@ -15,21 +15,64 @@
 :icons: font
 :title-slide-background-image: pexels-pixabay-327049.jpg
 
-== The Hardware Reality
+== about me
+
+Jarek Pałka
+
+Neo4j (a graph database)
+senior staff engineer/team lead/benchmarking team
+
+over 20 years with Java&JVM ( and people)
+speaker, coder, architect
+
+WWW: https://symentis.pl[]
+email: jaroslaw.palka@symentis.pl
+
+== What is concurrency?
+
+Think of a coffee shop at 8am.
+
+One barista taking one order at a time, finishing it completely before turning to the next customer — that is sequential. The queue grows. Customers leave.
+
+A real coffee shop has one barista taking orders while another pulls espresso while a third steams milk. Three tasks in motion simultaneously, sharing the same machines, the same counter, the same workspace. That is concurrency.
+
+* *Multiple things in progress at the same time* — not necessarily finishing together, just started
+* *Shared resources require coordination* — two baristas cannot use the same grinder simultaneously without spilling
+* *Order matters* — espresso before milk, not the other way around
+* *Failures cascade* — one broken machine backs up the whole flow
+
+Your program is the coffee shop. Threads are the baristas. The heap is the counter.
+
+== Why you should care?
+
+AI can write code. It cannot reason about *your* race conditions.
+
+When you ask an AI to build a feature, it generates correct-looking sequential logic. It does not know that three instances of your service will run simultaneously in production. It does not know that two requests will hit the same cache entry at the same time. It does not know that the "simple" counter you just shipped loses updates under load.
+
+Understanding concurrency is not about writing `synchronized` by hand. It is about:
+
+* *Designing systems* — how you partition state, where you put queues, what consistency model you choose
+* *Reading architecture* — spotting the shared mutable state hiding behind a clean API
+* *Reviewing AI output* — the code looks right; you need to know *why it is wrong*
+* *Debugging production* — the bug that appears once a week at 3am under load is always a concurrency bug
+
+The scale at which modern systems run makes every concurrency mistake a production incident.
+
+=== The Hardware Reality
 
 * Modern CPUs: 4, 8, 16+ cores
 * Each core executes instructions independently
 * Hyper-threading: 2 hardware threads per physical core
 * The hardware has been parallel for decades
 
-== Concurrency is Everywhere
+=== Concurrency is Everywhere
 
 * Web servers handle thousands of simultaneous requests
 * UIs stay responsive while work runs in the background
 * Databases serve multiple clients at once
 * Writing sequential software ignores the machine under your feet
 
-== CPU Architecture
+=== CPU Architecture
 
 [graphviz]
 ----
@@ -63,21 +106,21 @@ digraph cpu {
 }
 ----
 
-== Processes
+=== Processes
 
 * A running instance of a program
 * Has its own isolated memory space
 * Owns resources: open files, network sockets
 * Heavy to create, expensive to context-switch
 
-== Threads
+=== Threads
 
 * A unit of execution inside a process
 * Shares memory with sibling threads in the same process
 * Lighter to create and switch than a process
 * Scheduled by the kernel preemptively
 
-== Processes vs Threads
+=== Processes vs Threads
 
 [graphviz]
 ----
@@ -149,19 +192,20 @@ digraph mem {
 }
 ----
 
-== Java Threads
-
-* `java.lang.Thread` — one class, one abstraction
-* One Java thread = one OS thread (1:1 mapping)
-* JVM handles the platform-specific details
-* Same threading code runs on Linux, macOS, Windows
-
 == What Java Gives Us
 
 * Create and control threads
 * Synchronize access to shared memory
 * Coordinate between threads
 * Inspect and monitor what is running
+
+=== Java Threads
+
+* `java.lang.Thread` — one class, one abstraction
+* One Java thread = one OS thread (1:1 mapping)
+* JVM handles the platform-specific details
+* Same threading code runs on Linux, macOS, Windows
+
 
 == Today's Journey
 
