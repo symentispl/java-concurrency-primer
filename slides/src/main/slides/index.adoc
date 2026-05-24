@@ -607,3 +607,32 @@ synchronized (lockA) {
     synchronized (lockB) { System.out.println("Thread B: done"); }
 }
 ----
+
+== Livelock
+
+* Threads are active — not blocked, not waiting
+* Each thread keeps reacting to the other's state
+* No progress is made despite constant CPU activity
+* Harder to detect than deadlock: the program does not hang, it just spins
+
+== Livelock in Java
+
+[source,java]
+----
+// Worker A wants r1→r2, Worker B wants r2→r1
+// each acquires its first, finds the second taken, backs off — in sync
+
+if (!second.tryAcquire()) {
+    first.release();  // politely step aside
+    System.out.println(name + ": backing off");
+    Thread.sleep(10); // wait... so does the other thread
+    continue;         // retry — same result
+}
+----
+
+== Preventing Livelock
+
+* Add randomness: random backoff delay breaks the mirroring
+* Impose a retry limit: after N attempts, one thread proceeds regardless
+* Use a coordinator: a third party decides who goes first
+* Timeout: if resources cannot be acquired within a deadline, signal an error
