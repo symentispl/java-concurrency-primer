@@ -90,8 +90,9 @@ what makes you fit for a job?
 ----
 digraph cpu {
     rankdir=TB
+    graph [bgcolor="#1a1a2e", size="18,9"]
     node [shape=rect, style=filled, fontname="sans-serif", fontsize=11, margin="0.25,0.15"]
-    edge [color=white, fontname="sans-serif", fontsize=10, fontcolor="#cccccc"]
+    edge [color="#aaaaaa", fontname="sans-serif", fontsize=10, fontcolor="#dddddd"]
 
     subgraph cluster_c0 {
         label="Core 0"
@@ -161,15 +162,16 @@ digraph cpu {
 digraph mem {
     rankdir=LR
     compound=true
-    node [shape=rect, style=filled, fontname="sans-serif", margin="0.3,0.15"]
-    edge [color=white]
+    graph [bgcolor="#1a1a2e", size="18,9"]
+    node [shape=rect, style=filled, fontname="sans-serif", fontsize=11, margin="0.3,0.15"]
+    edge [color="#aaaaaa", fontname="sans-serif", fontsize=10, fontcolor="#dddddd"]
 
     subgraph cluster_p1 {
         label="Process A"
         style=filled
         fillcolor="#1a3a5c"
         fontcolor=white
-        color=white
+        color="#4a90d9"
 
         H1 [label="Heap\n(shared)", fillcolor="#4a90d9", fontcolor=white, shape=cylinder]
 
@@ -177,7 +179,7 @@ digraph mem {
             label="Thread 1"
             style=filled
             fillcolor="#2a4a2a"
-            color=white
+            color="#5ba05b"
             fontcolor=white
             S1 [label="Stack", fillcolor="#5ba05b", fontcolor=white]
         }
@@ -185,7 +187,7 @@ digraph mem {
             label="Thread 2"
             style=filled
             fillcolor="#2a4a2a"
-            color=white
+            color="#5ba05b"
             fontcolor=white
             S2 [label="Stack", fillcolor="#5ba05b", fontcolor=white]
         }
@@ -199,7 +201,7 @@ digraph mem {
         style=filled
         fillcolor="#3a1a1a"
         fontcolor=white
-        color=white
+        color="#c97c2e"
 
         H2 [label="Heap\n(shared)", fillcolor="#c97c2e", fontcolor=white, shape=cylinder]
 
@@ -207,7 +209,7 @@ digraph mem {
             label="Thread 1"
             style=filled
             fillcolor="#2a4a2a"
-            color=white
+            color="#5ba05b"
             fontcolor=white
             S3 [label="Stack", fillcolor="#5ba05b", fontcolor=white]
         }
@@ -215,7 +217,7 @@ digraph mem {
             label="Thread 2"
             style=filled
             fillcolor="#2a4a2a"
-            color=white
+            color="#5ba05b"
             fontcolor=white
             S4 [label="Stack", fillcolor="#5ba05b", fontcolor=white]
         }
@@ -306,8 +308,9 @@ t.start();
 ----
 digraph thread_states {
     rankdir=LR
-    node [shape=rect, style=filled, fontname="sans-serif", margin="0.25,0.15"]
-    edge [fontname="sans-serif", fontsize=11, color=white, fontcolor="#cccccc"]
+    graph [bgcolor="#1a1a2e", size="18,9"]
+    node [shape=rect, style=filled, fontname="sans-serif", fontsize=11, margin="0.25,0.15"]
+    edge [fontname="sans-serif", fontsize=10, color="#aaaaaa", fontcolor="#dddddd"]
 
     NEW          [label="NEW",          fillcolor="#4a90d9", fontcolor=white]
     RUNNABLE     [label="RUNNABLE",     fillcolor="#5ba05b", fontcolor=white]
@@ -434,8 +437,9 @@ void main() throws InterruptedException {
 ----
 digraph interleave {
     rankdir=TB
+    graph [bgcolor="#1a1a2e", size="18,9"]
     node [shape=rect, style=filled, fontname="monospace", fontsize=11, margin="0.25,0.15"]
-    edge [color=white, fontcolor="#cccccc", fontname="sans-serif", fontsize=10]
+    edge [color="#aaaaaa", fontcolor="#dddddd", fontname="sans-serif", fontsize=10]
 
     A1 [label="Thread A: LOAD counter → 5",  fillcolor="#4a90d9", fontcolor=white]
     A2 [label="Thread A: ADD  5+1=6",        fillcolor="#4a90d9", fontcolor=white]
@@ -454,7 +458,7 @@ digraph interleave {
     { rank=same; A2; B2 }
     { rank=same; A3; B3 }
 
-    A1 -> B1 [style=dashed, color="#aaaaaa", fontcolor="#aaaaaa", label="  context switch"]
+    A1 -> B1 [style=dashed, color="#aaaaaa", fontcolor="#dddddd", label="  context switch"]
 
     A3 -> R
     B3 -> R
@@ -583,8 +587,9 @@ class Counter {
 ----
 digraph monitor {
     rankdir=TB
+    graph [bgcolor="#1a1a2e", size="18,9"]
     node [shape=rect, style=filled, fontname="sans-serif", fontsize=11, margin="0.25,0.15"]
-    edge [fontname="sans-serif", fontsize=10, color=white, fontcolor="#cccccc"]
+    edge [fontname="sans-serif", fontsize=10, color="#aaaaaa", fontcolor="#dddddd"]
 
     ENTER [label="Thread: entering",            fillcolor="#4a90d9", fontcolor=white]
     LOCK  [label="Lock\n(one thread at a time)", fillcolor="#5ba05b", fontcolor=white]
@@ -663,8 +668,9 @@ synchronized int take() throws InterruptedException {
 ----
 digraph deadlock {
     rankdir=LR
+    graph [bgcolor="#1a1a2e", size="18,9"]
     node [shape=rect, style=filled, fontname="sans-serif", fontsize=11, margin="0.25,0.15"]
-    edge [fontname="sans-serif", fontsize=10, color=white, fontcolor="#cccccc"]
+    edge [fontname="sans-serif", fontsize=10, color="#aaaaaa", fontcolor="#dddddd"]
 
     TA [label="Thread A", fillcolor="#4a90d9", fontcolor=white]
     TB [label="Thread B", fillcolor="#4a90d9", fontcolor=white]
