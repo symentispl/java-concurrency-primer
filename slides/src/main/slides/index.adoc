@@ -329,6 +329,20 @@ void main() throws InterruptedException {
 }
 ----
 
+== Daemon Threads
+
+* Run in the background — JVM exits when only daemon threads remain
+* `thread.setDaemon(true)` must be called before `thread.start()`
+* Non-daemon (user) threads — JVM waits for all of them to finish
+* Typical uses: garbage collector, background timers, monitoring
+
+== Thread Priorities
+
+* Values from 1 (`MIN_PRIORITY`) to 10 (`MAX_PRIORITY`), default 5 (`NORM_PRIORITY`)
+* `thread.setPriority(n)` — a hint to the OS scheduler, not a guarantee
+* OS schedulers frequently ignore Java priorities entirely
+* Never use priorities as a synchronization or coordination mechanism
+
 == Shared Mutable State
 
 * Two threads, one variable, at least one writes → data race
