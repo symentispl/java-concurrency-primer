@@ -507,3 +507,34 @@ if (!condition) { wait(); }
 * `notifyAll()` — wakes all waiting threads; each re-checks its condition
 * `notify()` is risky: with producers and consumers on the same object, it may wake the wrong thread
 * Use `notifyAll()` as the safe default
+
+== BoundedBuffer — Producer Side
+
+[source,java]
+----
+synchronized void put(int item) throws InterruptedException {
+    while (count == buffer.length) {
+        wait(); // buffer full — release lock and sleep
+    }
+    buffer[head] = item;
+    head = (head + 1) % buffer.length;
+    count++;
+    notifyAll(); // wake consumers
+}
+----
+
+== BoundedBuffer — Consumer Side
+
+[source,java]
+----
+synchronized int take() throws InterruptedException {
+    while (count == 0) {
+        wait(); // buffer empty — release lock and sleep
+    }
+    int item = buffer[tail];
+    tail = (tail + 1) % buffer.length;
+    count--;
+    notifyAll(); // wake producers
+    return item;
+}
+----
