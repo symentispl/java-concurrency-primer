@@ -661,88 +661,6 @@ Two properties every correct lock must have:
 * *Safety* — at most one thread inside the critical section
 * *Liveness* — a waiting thread eventually gets in (no deadlock by itself)
 
-=== Spin-Lock — The Naive Approach
-
-[source,java]
-----
-// broken — read-then-write on 'locked' is not atomic
-class SpinLock {
-    private volatile boolean locked = false;
-
-    void lock() {
-        while (locked) {}  // busy-wait — burns a full CPU core
-        locked = true;     // BUG: another thread can sneak in between check and set
-    }
-    void unlock() { locked = false; }
-}
-
-// correct: hardware CAS makes acquire a single atomic operation
-class SpinLock {
-    private final AtomicBoolean locked = new AtomicBoolean(false);
-
-    void lock() {
-        while (!locked.compareAndSet(false, true)) {} // spin until CAS wins
-    }
-    void unlock() { locked.set(false); }
-}
-----
-
-=== Spin-Lock Downsides
-
-* *CPU waste* — every waiting thread burns a full core doing nothing useful
-* *Cache line storm* — CAS from N cores repeatedly invalidates the same cache line across all L1 caches; contention grows with thread count
-* *No OS awareness* — the scheduler keeps allocating time slices to spinning threads; they consume quota they cannot use
-* *Unfair* — no ordering; under high load a thread may spin indefinitely while others keep winning CAS
-
-Spin-locks are useful only when the critical section is *very short* and contention is *rare* — a few dozen CPU cycles at most.
-
-=== How Java Implements Locks
-
-Default since JDK 23: *LM_LIGHTWEIGHT* (JDK-8291555 / JDK-8315880). +
-Two tiers — lightweight lock in userspace, heavyweight monitor when contended.
-
-[graphviz]
-----
-digraph java_lock {
-    rankdir=TB
-    graph [bgcolor="#1a1a2e", size="18,9"]
-    node [shape=rect, style=filled, fontname="sans-serif", fontsize=11, margin="0.3,0.15"]
-    edge [fontname="sans-serif", fontsize=10, color="#aaaaaa", fontcolor="#dddddd"]
-
-    LOCK  [label="synchronized / lock()",                                     fillcolor="#4a90d9", fontcolor=white]
-    CAS   [label="CAS header tag bits 01→00\n(lightweight lock — userspace)",  fillcolor="#5ba05b", fontcolor=white, shape=diamond]
-    LS    [label="push object ref\nto thread-local lock stack",                fillcolor="#5ba05b", fontcolor=white]
-    CS    [label="critical section",                                            fillcolor="#5ba05b", fontcolor=white]
-    INF   [label="inflate: CAS header to ObjectMonitor ptr (tag=10)\n(heavyweight monitor — contended path)", fillcolor="#6a3a7a", fontcolor=white]
-    SPIN  [label="adaptive spin on monitor\n(HotSpot tunes iteration count)",  fillcolor="#c97c2e", fontcolor=white, shape=diamond]
-    FUTEX [label="futex(FUTEX_WAIT)\nkernel parks thread — zero CPU",          fillcolor="#7a3a3a", fontcolor=white]
-    WAKE  [label="unlock → futex(FUTEX_WAKE)\nkernel moves thread to runqueue", fillcolor="#6a3a7a", fontcolor=white]
-    UNL   [label="pop lock stack\nCAS header 00→01 (unlock)",                  fillcolor="#4a90d9", fontcolor=white]
-
-    LOCK  -> CAS
-    CAS   -> LS    [label="won"]
-    LS    -> CS
-    CS    -> UNL
-    CAS   -> INF   [label="lost — contended"]
-    INF   -> SPIN
-    SPIN  -> CS    [label="won during spin"]
-    SPIN  -> FUTEX [label="still contended"]
-    FUTEX -> WAKE  [label="owner unlocks"]
-    WAKE  -> SPIN  [label="re-compete"]
-}
-----
-
-=== futex — Fast Userspace Mutex
-
-`futex(2)` is the Linux kernel primitive underlying every JVM heavyweight monitor and `java.util.concurrent` lock:
-
-* *Fast path* (lightweight lock): CAS in userspace — *no syscall, no kernel entry at all*
-* *Slow path*: inflated monitor calls `futex(FUTEX_WAIT, &lock, expected)` — kernel checks value atomically and parks the thread; CPU freed immediately
-* *Wake path*: `futex(FUTEX_WAKE, &lock, 1)` — kernel picks one waiter and moves it back to the run queue
-* *Zero CPU while parked* — unlike a spin-lock, a blocked thread consumes no scheduler time
-
-The result: uncontended locks cost ~1 CAS; contended locks pay a syscall only for threads that actually have to wait.
-
 == Every Object Has a Lock
 
 [source,java]
@@ -814,6 +732,52 @@ class Counter {
 * Other threads cannot make progress while you spin
 * You need to release the lock and wait until things change
 
+== Waiting for a Condition
+
+`synchronized` protects shared state. But sometimes a thread needs to *wait for something to be true* before it can proceed.
+
+The pattern is always the same:
+
+[source,java]
+----
+// inside synchronized on the same object:
+while (!conditionIsTrue()) {
+    wait();             // releases the lock atomically, parks this thread
+}
+// condition is now true — proceed safely
+----
+
+* `wait()` releases the lock *and* parks the thread in a single atomic step
+* Another thread changes state, then calls `notifyAll()` to wake waiters
+* Always `while` — not `if` — because spurious wakeups and racing conditions both exist
+* Re-checking after every wakeup costs nothing; missing a changed condition is a bug
+
+=== ReadySignal — The Simplest Case
+
+One thread waits until another says "go". The condition is a single boolean — no data structure involved.
+
+[source,java]
+----
+class ReadySignal {
+    private boolean ready = false;
+
+    synchronized void signal() {
+        ready = true;
+        notifyAll();            // wake all waiters
+    }
+
+    synchronized void await() throws InterruptedException {
+        while (!ready) {
+            wait();             // release lock, park; re-check on wakeup
+        }
+    }
+}
+----
+
+_Run:_ `mise run java:exec -- ReadySignal`
+
+This is the building block every blocking coordination pattern is built from.
+
 == Monitor = Lock + Wait Set
 
 [graphviz]
@@ -858,6 +822,48 @@ if (!condition) { wait(); }
 * `notifyAll()` — wakes all waiting threads; each re-checks its condition
 * `notify()` is risky: with producers and consumers on the same object, it may wake the wrong thread
 * Use `notifyAll()` as the safe default
+
+== Single-Slot Buffer
+
+Before the full ring buffer: capacity of *one item*. Same coordination pattern, zero index arithmetic.
+
+The two conditions mirror each other:
+
+* Producer waits while `full` — consumer must take the item first
+* Consumer waits while `!full` — producer must put an item first
+
+=== Single-Slot Buffer — Producer Side
+
+[source,java]
+----
+class SingleSlotBuffer {
+    private int  item;
+    private boolean full = false;
+
+    synchronized void put(int value) throws InterruptedException {
+        while (full) wait();    // slot taken — wait for consumer
+        item = value;
+        full = true;
+        notifyAll();            // wake consumer
+    }
+}
+----
+
+=== Single-Slot Buffer — Consumer Side
+
+[source,java]
+----
+    synchronized int take() throws InterruptedException {
+        while (!full) wait();   // slot empty — wait for producer
+        int value = item;
+        full  = false;
+        notifyAll();            // wake producer
+        return value;
+    }
+----
+
+`BoundedBuffer` is this pattern with a ring buffer replacing the single slot. +
+The `while / wait / notifyAll` structure is identical.
 
 == BoundedBuffer — Producer Side
 
@@ -1325,6 +1331,92 @@ mise run java:exec:jfr -- ContentionDemo lock   # → ContentionDemo.jfr
 * `sync.jfr`: one contended monitor — the `SyncBuffer` instance; `notifyAll()` wakes all waiters
 * `lock.jfr`: `AbstractQueuedSynchronizer` in contention view; targeted `signal()` reduces wakeups
 * Compare throughput printed by each run — the number makes the difference concrete
+
+== Under the Hood — How Java Locks Work
+
+Understanding what `synchronized` does at the hardware level explains why it is fast when uncontended and what "contention" actually costs.
+
+=== Spin-Lock — The Naive Approach
+
+[source,java]
+----
+// broken — read-then-write on 'locked' is not atomic
+class SpinLock {
+    private volatile boolean locked = false;
+
+    void lock() {
+        while (locked) {}  // busy-wait — burns a full CPU core
+        locked = true;     // BUG: another thread can sneak in between check and set
+    }
+    void unlock() { locked = false; }
+}
+
+// correct: hardware CAS makes acquire a single atomic operation
+class SpinLock {
+    private final AtomicBoolean locked = new AtomicBoolean(false);
+
+    void lock() {
+        while (!locked.compareAndSet(false, true)) {} // spin until CAS wins
+    }
+    void unlock() { locked.set(false); }
+}
+----
+
+=== Spin-Lock Downsides
+
+* *CPU waste* — every waiting thread burns a full core doing nothing useful
+* *Cache line storm* — CAS from N cores repeatedly invalidates the same cache line across all L1 caches; contention grows with thread count
+* *No OS awareness* — the scheduler keeps allocating time slices to spinning threads; they consume quota they cannot use
+* *Unfair* — no ordering; under high load a thread may spin indefinitely while others keep winning CAS
+
+Spin-locks are useful only when the critical section is *very short* and contention is *rare* — a few dozen CPU cycles at most.
+
+=== How Java Implements Locks
+
+Default since JDK 23: *LM_LIGHTWEIGHT* (JDK-8291555 / JDK-8315880). +
+Two tiers — lightweight lock in userspace, heavyweight monitor when contended.
+
+[graphviz]
+----
+digraph java_lock {
+    rankdir=TB
+    graph [bgcolor="#1a1a2e", size="18,9"]
+    node [shape=rect, style=filled, fontname="sans-serif", fontsize=11, margin="0.3,0.15"]
+    edge [fontname="sans-serif", fontsize=10, color="#aaaaaa", fontcolor="#dddddd"]
+
+    LOCK  [label="synchronized / lock()",                                     fillcolor="#4a90d9", fontcolor=white]
+    CAS   [label="CAS header tag bits 01→00\n(lightweight lock — userspace)",  fillcolor="#5ba05b", fontcolor=white, shape=diamond]
+    LS    [label="push object ref\nto thread-local lock stack",                fillcolor="#5ba05b", fontcolor=white]
+    CS    [label="critical section",                                            fillcolor="#5ba05b", fontcolor=white]
+    INF   [label="inflate: CAS header to ObjectMonitor ptr (tag=10)\n(heavyweight monitor — contended path)", fillcolor="#6a3a7a", fontcolor=white]
+    SPIN  [label="adaptive spin on monitor\n(HotSpot tunes iteration count)",  fillcolor="#c97c2e", fontcolor=white, shape=diamond]
+    FUTEX [label="futex(FUTEX_WAIT)\nkernel parks thread — zero CPU",          fillcolor="#7a3a3a", fontcolor=white]
+    WAKE  [label="unlock → futex(FUTEX_WAKE)\nkernel moves thread to runqueue", fillcolor="#6a3a7a", fontcolor=white]
+    UNL   [label="pop lock stack\nCAS header 00→01 (unlock)",                  fillcolor="#4a90d9", fontcolor=white]
+
+    LOCK  -> CAS
+    CAS   -> LS    [label="won"]
+    LS    -> CS
+    CS    -> UNL
+    CAS   -> INF   [label="lost — contended"]
+    INF   -> SPIN
+    SPIN  -> CS    [label="won during spin"]
+    SPIN  -> FUTEX [label="still contended"]
+    FUTEX -> WAKE  [label="owner unlocks"]
+    WAKE  -> SPIN  [label="re-compete"]
+}
+----
+
+=== futex — Fast Userspace Mutex
+
+`futex(2)` is the Linux kernel primitive underlying every JVM heavyweight monitor and `java.util.concurrent` lock:
+
+* *Fast path* (lightweight lock): CAS in userspace — *no syscall, no kernel entry at all*
+* *Slow path*: inflated monitor calls `futex(FUTEX_WAIT, &lock, expected)` — kernel checks value atomically and parks the thread; CPU freed immediately
+* *Wake path*: `futex(FUTEX_WAKE, &lock, 1)` — kernel picks one waiter and moves it back to the run queue
+* *Zero CPU while parked* — unlike a spin-lock, a blocked thread consumes no scheduler time
+
+The result: uncontended locks cost ~1 CAS; contended locks pay a syscall only for threads that actually have to wait.
 
 == Going Deeper — Linux TSA Tools
 
