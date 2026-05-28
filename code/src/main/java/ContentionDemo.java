@@ -83,6 +83,7 @@ class ContentionDemo {
                 } catch (InterruptedException e) { Thread.currentThread().interrupt(); }
             });
         }
+
         for (int i = 0; i < consumers; i++) {
             threads[producers + i] = new Thread(() -> {
                 try {

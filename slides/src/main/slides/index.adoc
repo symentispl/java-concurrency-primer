@@ -36,6 +36,8 @@ One barista taking one order at a time, finishing it completely before turning t
 
 A real coffee shop has one barista taking orders while another pulls espresso while a third steams milk. Three tasks in motion simultaneously, sharing the same machines, the same counter, the same workspace. That is concurrency.
 
+=== !
+
 * *Multiple things in progress at the same time* — not necessarily finishing together, just started
 * *Shared resources require coordination* — two baristas cannot use the same grinder simultaneously without spilling
 * *Order matters* — espresso before milk, not the other way around
@@ -48,6 +50,8 @@ Your program is the coffee shop. Threads are the baristas. The heap is the count
 AI can write code. It cannot reason about *your* race conditions.
 
 When you ask an AI to build a feature, it generates correct-looking sequential logic. It does not know that three instances of your service will run simultaneously in production. It does not know that two requests will hit the same cache entry at the same time. It does not know that the "simple" counter you just shipped loses updates under load.
+
+=== !
 
 Understanding concurrency is not about writing `synchronized` by hand. It is about:
 
@@ -163,24 +167,6 @@ digraph cpu {
 * Lighter to create and switch than a process
 * Scheduled by the kernel preemptively
 
-=== Preemptive scheduling
-
-The kernel does not ask your thread for permission to pause it.
-
-Every thread gets a *time slice* — typically 1–10 ms. When the slice expires, the kernel freezes the thread mid-instruction, saves its state (registers, program counter), and hands the CPU to another thread. Your thread has no say.
-
-This happens *between any two machine instructions* — including inside what looks like a single Java statement.
-
-=== this is not a bug
-
-* `counter++` is three instructions: LOAD → ADD → STORE
-* The kernel can pause the thread after LOAD, run another thread, then resume
-* The other thread sees the old value — and writes its own result on top of yours
-* You just lost an update, silently
-
-This is not a bug in Java. It is how every modern OS works. +
-It is why concurrent code requires explicit coordination.
-
 === Processes vs Threads
 
 [graphviz]
@@ -254,6 +240,70 @@ digraph mem {
 }
 ----
 
+
+=== Preemptive scheduling
+
+The kernel does not ask your thread for permission to pause it.
+
+Every thread gets a *time slice* — typically 1–10 ms. When the slice expires, the kernel freezes the thread mid-instruction, saves its state (registers, program counter), and hands the CPU to another thread. Your thread has no say.
+
+**this is called "context switching"**
+
+This happens *between any two machine instructions* — including inside what looks like a single Java statement.
+
+=== is this safe to call from to threads?
+
+**i++**
+
+=== i++ — two threads, one lost update
+
+[graphviz]
+----
+digraph interleave {
+    rankdir=TB
+    graph [bgcolor="#1a1a2e", size="18,9"]
+    node [shape=rect, style=filled, fontname="monospace", fontsize=11, margin="0.25,0.15"]
+    edge [color="#aaaaaa", fontcolor="#dddddd", fontname="sans-serif", fontsize=10]
+
+    A1 [label="Thread A: LOAD counter → 5",          fillcolor="#4a90d9", fontcolor=white]
+    A2 [label="Thread A: suspended",                  fillcolor="#4a90d9", fontcolor=white, style="filled,dashed"]
+    A3 [label="Thread A: ADD  5+1=6  ← stale read",  fillcolor="#4a90d9", fontcolor=white]
+    A4 [label="Thread A: STORE counter=6",            fillcolor="#7a3a3a", fontcolor=white]
+
+    B1 [label="Thread B: (not yet scheduled)",        fillcolor="#c97c2e", fontcolor=white, style="filled,dashed"]
+    B2 [label="Thread B: LOAD counter → 5",           fillcolor="#c97c2e", fontcolor=white]
+    B3 [label="Thread B: ADD  5+1=6",                 fillcolor="#c97c2e", fontcolor=white]
+    B4 [label="Thread B: STORE counter=6",            fillcolor="#c97c2e", fontcolor=white]
+
+    { rank=same; A1; B1 }
+    { rank=same; A2; B2 }
+    { rank=same; A3; B3 }
+    { rank=same; A4; B4 }
+
+    A1 -> A2 [label="context switch →"]
+    A2 -> A3 [label="← resumed"]
+    A3 -> A4
+
+    B1 -> B2
+    B2 -> B3
+    B3 -> B4
+
+    R [label="counter = 6   expected 7 — one increment lost", fillcolor="#7a3a3a", fontcolor=white, shape=diamond]
+    A4 -> R
+    B4 -> R
+}
+----
+
+=== this is not a bug
+
+* `counter++` is three instructions: LOAD → ADD → STORE
+* The kernel can pause the thread after LOAD, run another thread, then resume
+* The other thread sees the old value — and writes its own result on top of yours
+* You just lost an update, silently
+
+This is not a bug in Java. It is how every modern OS works. +
+It is why concurrent code requires explicit coordination.
+
 [role="highlight_title"]
 == welcome to the machine
 
@@ -268,6 +318,8 @@ but Java Virtual Machine capability
 Think of Java language as frontend for +
 Java Virtual Machine backend
 
+=== !
+
 * Create and control threads
 * Synchronize access to shared memory
 * Coordinate between threads
@@ -279,7 +331,6 @@ Java Virtual Machine backend
 * One Java thread = one OS thread (1:1 mapping)
 * JVM handles the platform-specific details
 * Same threading code runs on Linux, macOS, Windows
-
 
 == Today's Journey
 
@@ -376,6 +427,54 @@ digraph thread_states {
 * The thread must check and respond — it is cooperative
 * Cannot forcibly stop a running thread (why `stop()` was removed)
 * Safe shutdown requires the thread's cooperation
+
+=== The Cooperative Protocol
+
+[graphviz]
+----
+digraph interrupt {
+    rankdir=LR
+    graph [bgcolor="#1a1a2e", size="18,9"]
+    node [shape=rect, style=filled, fontname="sans-serif", fontsize=11, margin="0.3,0.15"]
+    edge [fontname="sans-serif", fontsize=10, color="#aaaaaa", fontcolor="#dddddd"]
+
+    subgraph cluster_main {
+        label="Main Thread"
+        style=filled; fillcolor="#15253a"; color="#4a90d9"; fontcolor=white
+
+        M1 [label="do work", fillcolor="#4a90d9", fontcolor=white]
+        M2 [label="worker.interrupt()", fillcolor="#4a90d9", fontcolor=white]
+        M3 [label="worker.join()", fillcolor="#5ba05b", fontcolor=white]
+        M4 [label="continue", fillcolor="#5ba05b", fontcolor=white]
+
+        M1 -> M2 -> M3 -> M4
+    }
+
+    subgraph cluster_worker {
+        label="Worker Thread"
+        style=filled; fillcolor="#1a3a1a"; color="#5ba05b"; fontcolor=white
+
+        W1 [label="loop: doWork()", fillcolor="#5ba05b", fontcolor=white]
+        W2 [label="check interrupted flag", fillcolor="#c97c2e", fontcolor=white, shape=diamond]
+        W3 [label="blocking op throws\nInterruptedException", fillcolor="#c97c2e", fontcolor=white]
+        W4 [label="restore flag +\nclean up", fillcolor="#c97c2e", fontcolor=white]
+        W5 [label="return — thread done", fillcolor="#7a3a3a", fontcolor=white]
+
+        W1 -> W2
+        W2 -> W1  [label="not set"]
+        W2 -> W4  [label="set"]
+        W3 -> W4
+        W4 -> W5
+    }
+
+    FLAG [label="interrupted\nflag = true", fillcolor="#6a3a7a", fontcolor=white, shape=ellipse]
+
+    M2 -> FLAG [label="sets"]
+    FLAG -> W2  [label="seen on\nnext check", style=dashed]
+    FLAG -> W3  [label="wakes\nblocked op", style=dashed]
+    M3 -> W5    [style=invis]
+}
+----
 
 == Blocking Methods React Automatically
 
@@ -547,6 +646,102 @@ void main() throws InterruptedException {
 * Only one thread holds the lock at a time — others block
 * Guarantees: mutual exclusion AND memory visibility
 * Lock released automatically when the block exits
+
+=== lock? what is lock?
+
+A *lock* is the most fundamental synchronization primitive.
+
+* A shared token — only *one* thread can hold it at a time
+* *Acquire*: claim the token; if already taken, wait
+* *Release*: hand the token back; unblock one waiter
+* *Mutual exclusion*: the protected region runs in exactly one thread at a time
+
+Two properties every correct lock must have:
+
+* *Safety* — at most one thread inside the critical section
+* *Liveness* — a waiting thread eventually gets in (no deadlock by itself)
+
+=== Spin-Lock — The Naive Approach
+
+[source,java]
+----
+// broken — read-then-write on 'locked' is not atomic
+class SpinLock {
+    private volatile boolean locked = false;
+
+    void lock() {
+        while (locked) {}  // busy-wait — burns a full CPU core
+        locked = true;     // BUG: another thread can sneak in between check and set
+    }
+    void unlock() { locked = false; }
+}
+
+// correct: hardware CAS makes acquire a single atomic operation
+class SpinLock {
+    private final AtomicBoolean locked = new AtomicBoolean(false);
+
+    void lock() {
+        while (!locked.compareAndSet(false, true)) {} // spin until CAS wins
+    }
+    void unlock() { locked.set(false); }
+}
+----
+
+=== Spin-Lock Downsides
+
+* *CPU waste* — every waiting thread burns a full core doing nothing useful
+* *Cache line storm* — CAS from N cores repeatedly invalidates the same cache line across all L1 caches; contention grows with thread count
+* *No OS awareness* — the scheduler keeps allocating time slices to spinning threads; they consume quota they cannot use
+* *Unfair* — no ordering; under high load a thread may spin indefinitely while others keep winning CAS
+
+Spin-locks are useful only when the critical section is *very short* and contention is *rare* — a few dozen CPU cycles at most.
+
+=== How Java Implements Locks
+
+Default since JDK 23: *LM_LIGHTWEIGHT* (JDK-8291555 / JDK-8315880). +
+Two tiers — lightweight lock in userspace, heavyweight monitor when contended.
+
+[graphviz]
+----
+digraph java_lock {
+    rankdir=TB
+    graph [bgcolor="#1a1a2e", size="18,9"]
+    node [shape=rect, style=filled, fontname="sans-serif", fontsize=11, margin="0.3,0.15"]
+    edge [fontname="sans-serif", fontsize=10, color="#aaaaaa", fontcolor="#dddddd"]
+
+    LOCK  [label="synchronized / lock()",                                     fillcolor="#4a90d9", fontcolor=white]
+    CAS   [label="CAS header tag bits 01→00\n(lightweight lock — userspace)",  fillcolor="#5ba05b", fontcolor=white, shape=diamond]
+    LS    [label="push object ref\nto thread-local lock stack",                fillcolor="#5ba05b", fontcolor=white]
+    CS    [label="critical section",                                            fillcolor="#5ba05b", fontcolor=white]
+    INF   [label="inflate: CAS header to ObjectMonitor ptr (tag=10)\n(heavyweight monitor — contended path)", fillcolor="#6a3a7a", fontcolor=white]
+    SPIN  [label="adaptive spin on monitor\n(HotSpot tunes iteration count)",  fillcolor="#c97c2e", fontcolor=white, shape=diamond]
+    FUTEX [label="futex(FUTEX_WAIT)\nkernel parks thread — zero CPU",          fillcolor="#7a3a3a", fontcolor=white]
+    WAKE  [label="unlock → futex(FUTEX_WAKE)\nkernel moves thread to runqueue", fillcolor="#6a3a7a", fontcolor=white]
+    UNL   [label="pop lock stack\nCAS header 00→01 (unlock)",                  fillcolor="#4a90d9", fontcolor=white]
+
+    LOCK  -> CAS
+    CAS   -> LS    [label="won"]
+    LS    -> CS
+    CS    -> UNL
+    CAS   -> INF   [label="lost — contended"]
+    INF   -> SPIN
+    SPIN  -> CS    [label="won during spin"]
+    SPIN  -> FUTEX [label="still contended"]
+    FUTEX -> WAKE  [label="owner unlocks"]
+    WAKE  -> SPIN  [label="re-compete"]
+}
+----
+
+=== futex — Fast Userspace Mutex
+
+`futex(2)` is the Linux kernel primitive underlying every JVM heavyweight monitor and `java.util.concurrent` lock:
+
+* *Fast path* (lightweight lock): CAS in userspace — *no syscall, no kernel entry at all*
+* *Slow path*: inflated monitor calls `futex(FUTEX_WAIT, &lock, expected)` — kernel checks value atomically and parks the thread; CPU freed immediately
+* *Wake path*: `futex(FUTEX_WAKE, &lock, 1)` — kernel picks one waiter and moves it back to the run queue
+* *Zero CPU while parked* — unlike a spin-lock, a blocked thread consumes no scheduler time
+
+The result: uncontended locks cost ~1 CAS; contended locks pay a syscall only for threads that actually have to wait.
 
 == Every Object Has a Lock
 
