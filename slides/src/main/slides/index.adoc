@@ -47,6 +47,58 @@ A real coffee shop has one barista taking orders while another pulls espresso wh
 
 Your program is the coffee shop. Threads are the baristas. The heap is the counter.
 
+=== need for speed
+
+=== the hardware reward
+
+Sum of `Math.sqrt()` over 100 million doubles — same work, more threads:
+
+Array size: 100,000,000 doubles +
+Available processors: 8
+
+   threads    time(ms)    speedup
+------------------------------------
+         1        1823       1.0x
+         2         934       1.9x
+         4         479       3.8x
+         8         251       7.3x
+----
+
+* Speedup tracks thread count on CPU-bound work
+* The hardware has 8 cores — ignoring them leaves most of the machine idle
+* This is free performance; it just requires understanding concurrency
+
+_Run:_ `java code/src/main/java/SpeedupDemo.java`
+
+=== scaling has limits
+
+Past the core count, adding threads stops helping — and eventually hurts:
+
+[cols=">1,>1,>1",options="header"]
+|===
+| threads | time(ms) | speedup
+
+| 16 {asterisk}
+| 265
+| 6.9x
+
+| 32 {asterisk}
+| 290
+| 6.3x
+|===
+
+_{asterisk} beyond available core count_
+
+*Amdahl's Law* — `S(n) = 1 / (1 − p + p/n)` +
+Even 5% serial code caps speedup at 20× no matter how many cores you add. +
+The serial fraction — startup, coordination, I/O — dominates at scale.
+
+*Universal Scalability Law* (Neil Gunther) — `C(n) = n / (1 + α(n−1) + βn(n−1))` +
+Extends Amdahl with a contention penalty α and a coherency penalty β. +
+At high thread counts, coordination overhead makes throughput *decrease*. +
+This is why every thread pool has a size limit.
+
+
 == Why you should care?
 
 AI can write code. It cannot reason about *your* race conditions.
@@ -89,48 +141,6 @@ what makes you fit for a job?
 * Each core executes instructions independently
 * Hyper-threading: 2 hardware threads per physical core
 * The hardware has been parallel for decades
-
-=== the hardware reward
-
-Sum of `Math.sqrt()` over 100 million doubles — same work, more threads:
-
-----
-Array size: 100,000,000 doubles
-Available processors: 8
-
-   threads    time(ms)    speedup
-------------------------------------
-         1        1823       1.0x
-         2         934       1.9x
-         4         479       3.8x
-         8         251       7.3x
-----
-
-* Speedup tracks thread count on CPU-bound work
-* The hardware has 8 cores — ignoring them leaves most of the machine idle
-* This is free performance; it just requires understanding concurrency
-
-_Run:_ `java code/src/main/java/SpeedupDemo.java`
-
-=== scaling has limits
-
-Past the core count, adding threads stops helping — and eventually hurts:
-
-----
-      16 *       265       6.9x
-      32 *       290       6.3x
-
-* beyond available core count
-----
-
-*Amdahl's Law* — `S(n) = 1 / (1 − p + p/n)` +
-Even 5% serial code caps speedup at 20× no matter how many cores you add. +
-The serial fraction — startup, coordination, I/O — dominates at scale.
-
-*Universal Scalability Law* (Neil Gunther) — `C(n) = n / (1 + α(n−1) + βn(n−1))` +
-Extends Amdahl with a coherency penalty β. +
-At high thread counts, coordination overhead makes throughput *decrease*. +
-This is why every thread pool has a size limit.
 
 === CPU Architecture
 
