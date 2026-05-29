@@ -53,6 +53,13 @@ class SpeedupDemo {
 
         int cores = Runtime.getRuntime().availableProcessors();
 
+        double seqCheck = sumSequential();
+        double parCheck = sumParallel(cores);
+        if (Math.abs(seqCheck - parCheck) / seqCheck > 1e-9) {
+            System.err.println("ERROR: sequential and parallel results diverge");
+            return;
+        }
+
         // powers of 2 up to cores, plus cores itself, then cores*2 and cores*4
         java.util.TreeSet<Integer> counts = new java.util.TreeSet<>();
         for (int n = 1; n <= cores; n *= 2) counts.add(n);
@@ -63,11 +70,12 @@ class SpeedupDemo {
         System.out.printf("Array size: %,d doubles%n", SIZE);
         System.out.printf("Available processors: %d%n%n", cores);
         System.out.printf("%10s   %10s   %8s%n", "threads", "time(ms)", "speedup");
-        System.out.println("-".repeat(36));
+        System.out.println("-".repeat(34));
 
         long baseTime = -1;
         for (int threads : counts) {
             long ms = measure(threads);
+            // baseline is single-threaded sequential; parallel(1) would include thread-creation overhead
             if (baseTime < 0) baseTime = ms;
             double speedup = (double) baseTime / ms;
             String label = threads > cores ? threads + " *" : String.valueOf(threads);
