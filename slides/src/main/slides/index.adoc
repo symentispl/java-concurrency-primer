@@ -30,6 +30,8 @@ email: jaroslaw.palka@symentis.pl
 
 == What is concurrency?
 
+=== coffee shop
+
 Think of a coffee shop at 8am.
 
 One barista taking one order at a time, finishing it completely before turning to the next customer — that is sequential. The queue grows. Customers leave.
@@ -87,6 +89,48 @@ what makes you fit for a job?
 * Each core executes instructions independently
 * Hyper-threading: 2 hardware threads per physical core
 * The hardware has been parallel for decades
+
+=== the hardware reward
+
+Sum of `Math.sqrt()` over 100 million doubles — same work, more threads:
+
+----
+Array size: 100,000,000 doubles
+Available processors: 8
+
+   threads    time(ms)    speedup
+------------------------------------
+         1        1823       1.0x
+         2         934       1.9x
+         4         479       3.8x
+         8         251       7.3x
+----
+
+* Speedup tracks thread count on CPU-bound work
+* The hardware has 8 cores — ignoring them leaves most of the machine idle
+* This is free performance; it just requires understanding concurrency
+
+_Run:_ `java code/src/main/java/SpeedupDemo.java`
+
+=== scaling has limits
+
+Past the core count, adding threads stops helping — and eventually hurts:
+
+----
+      16 *       265       6.9x
+      32 *       290       6.3x
+
+* beyond available core count
+----
+
+*Amdahl's Law* — `S(n) = 1 / (1 − p + p/n)` +
+Even 5% serial code caps speedup at 20× no matter how many cores you add. +
+The serial fraction — startup, coordination, I/O — dominates at scale.
+
+*Universal Scalability Law* (Neil Gunther) — `C(n) = n / (1 + α(n−1) + βn(n−1))` +
+Extends Amdahl with a coherency penalty β. +
+At high thread counts, coordination overhead makes throughput *decrease*. +
+This is why every thread pool has a size limit.
 
 === CPU Architecture
 
@@ -547,6 +591,8 @@ void main() throws InterruptedException {
 }
 ----
 
+_Run:_ `java code/src/main/java/CooperativeShutdown.java`
+
 == Daemon Threads
 
 * Run in the background — JVM exits when only daemon threads remain
@@ -640,6 +686,8 @@ void main() throws InterruptedException {
 }
 ----
 
+_Run:_ `java code/src/main/java/DataRace.java`
+
 == synchronized — Mutual Exclusion
 
 * Acquires a lock before entering the protected block
@@ -702,6 +750,8 @@ void main() throws InterruptedException {
     System.out.println("Actual:   " + counter); // always 20000
 }
 ----
+
+_Run:_ `java code/src/main/java/SynchronizedCounter.java`
 
 == synchronized is Reentrant
 
@@ -774,7 +824,7 @@ class ReadySignal {
 }
 ----
 
-_Run:_ `mise run java:exec -- ReadySignal`
+_Run:_ `java code/src/main/java/ReadySignal.java`
 
 This is the building block every blocking coordination pattern is built from.
 
@@ -896,6 +946,8 @@ synchronized int take() throws InterruptedException {
 }
 ----
 
+_Run:_ `java code/src/main/java/ProducerConsumer.java`
+
 == Deadlock
 
 * Each thread holds a lock the other needs
@@ -940,6 +992,8 @@ synchronized (lockB) {
 }
 ----
 
+_Run (hangs — kill with Ctrl+C):_ `java code/src/main/java/Deadlock.java`
+
 == Preventing Deadlock — Lock Ordering
 
 * Always acquire multiple locks in the same fixed order across all threads
@@ -966,6 +1020,8 @@ synchronized (lockA) {
 }
 ----
 
+_Run:_ `java code/src/main/java/DeadlockFixed.java`
+
 == Livelock
 
 * Threads are active — not blocked, not waiting
@@ -991,6 +1047,8 @@ while (attempts < 20) {
     // ... use both resources, return ...
 }
 ----
+
+_Run:_ `java code/src/main/java/Livelock.java`
 
 == Preventing Livelock
 
@@ -1137,6 +1195,8 @@ int take() throws InterruptedException {
 }
 ----
 
+_Run:_ `java code/src/main/java/BoundedBufferLock.java`
+
 == Fairness
 
 * `new ReentrantLock(true)` — fair lock: threads acquire in FIFO arrival order
@@ -1242,7 +1302,7 @@ _Live demo:_
 [source,bash]
 ----
 # terminal 1 — start the program (it will hang)
-mise run java:exec -- Deadlock
+java code/src/main/java/Deadlock.java
 
 # terminal 2 — find the PID and take a thread dump
 jcmd
@@ -1323,9 +1383,11 @@ _Live demo:_
 
 [source,bash]
 ----
-mise run java:exec:jfr -- ContentionDemo sync   # → ContentionDemo.jfr
+java -XX:StartFlightRecording=dumponexit=true,filename=ContentionDemo.jfr,settings=code/jfr/contention.jfc \
+     code/src/main/java/ContentionDemo.java sync
 
-mise run java:exec:jfr -- ContentionDemo lock   # → ContentionDemo.jfr
+java -XX:StartFlightRecording=dumponexit=true,filename=ContentionDemo.jfr,settings=code/jfr/contention.jfc \
+     code/src/main/java/ContentionDemo.java lock
 ----
 
 * `sync.jfr`: one contended monitor — the `SyncBuffer` instance; `notifyAll()` wakes all waiters
@@ -1433,3 +1495,19 @@ pidstat -t -p <pid> 1     # per-thread CPU + context-switch rate, 1s interval
 
 * Map JVM thread to OS thread: `nid=12345` in thread dump matches `TID 12345` in `top -H` directly (JDK 17+: nid is already decimal)
 * High context-switch rate with low CPU → threads fighting over a lock or spinning
+
+== what's next?
+
+* Learn java.util.concurrent 
+* "Java Concurrency in Practice" by Brain Goetz
+* "Seven concurrency models in seven weeks" by Paul Butcher
+* "Grokking concurrency" by Kirill Bobrov
+
+if you read those and don't have enough
+
+=== going even deeper
+
+* Java memory model, all presentations by Aleksey Shipilëv about Java internals
+* C++ memory model (holds true for Java) by Herb Sutter and Fedor G. Pikus
+* "The Art of Multiprocessor Programming" by  Maurice Herlihy, Nir Shavit
+* never ever give up 
