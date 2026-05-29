@@ -20,7 +20,7 @@
 
 Jarek Pałka
 
-Neo4j (a graph database)
+Neo4j (a graph database) +
 senior staff engineer/team lead/benchmarking team
 
 over 20 years with Java&JVM ( and people)
@@ -28,6 +28,14 @@ speaker, coder, architect
 
 WWW: https://symentis.pl[]
 email: jaroslaw.palka@symentis.pl
+
+=== before we start
+
+https://symentis.pl/en/presentations/[https://symentis.pl/en/presentations/]
+
+**"Java Concurrency Primer"**
+
+you will find there slides and code examples
 
 == What is concurrency?
 
@@ -105,6 +113,27 @@ The serial fraction — startup, coordination, I/O — dominates at scale.
 Extends Amdahl with a contention penalty α and a coherency penalty β. +
 At high thread counts, coordination overhead makes throughput *decrease*. +
 This is why every thread pool has a size limit.
+
+[role="highlight_title"]
+=== money, money, money
+
+image::https://media1.giphy.com/media/v1.Y2lkPTc5MGI3NjExMzV3ZnFtdWI2bnBvaHd0NjV2YnQ1Ynp2Nng5OGpkeTRpeDY5YWg4ZCZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/JpG2A9P3dPHXaTYrwu/giphy.gif[background]
+
+=== !
+
+software infrastructure costs are exploding, +
+it kills projects profitability
+
+**it is estimated to grow 75% this year**
+
+**shortages in hardware supply and increasing costs** +
+(geopolitics and AI)
+
+a whole lot of companies is looking for people +
+who know how to make software cheaper, scalable and fast
+
+everyone can vibe code microservice and write ecommerce platform +
+not many can make it cheap, fast and scalable
 
 === post-coding world
 
